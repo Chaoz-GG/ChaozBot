@@ -1,0 +1,14 @@
+{
+  "bot_token"             : "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "prefix"                : "$",
+
+  "log_channel_id"        : 12345,
+
+  "db_name"               : "XXXXX",
+  "db_user"               : "XXXXX",
+  "db_password"           : "XXXXX",
+  "db_host"               : "localhost",
+  "db_port"               : 3306,
+
+  "steam_key"             : "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+}
