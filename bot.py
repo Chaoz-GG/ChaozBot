@@ -17,7 +17,7 @@ logging.basicConfig(format='%(asctime)s - [%(levelname)s] %(message)s', level=lo
 
 
 # noinspection PyMethodMayBeStatic
-class FumeStop(commands.AutoShardedBot):
+class ChaozBot(commands.AutoShardedBot):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -25,7 +25,7 @@ class FumeStop(commands.AutoShardedBot):
 
 
 intents = discord.Intents.all()
-bot = FumeStop(command_prefix=initialize_prefix, case_insensitive=True, intents=intents)
+bot = ChaozBot(command_prefix=initialize_prefix, case_insensitive=True, intents=intents)
 bot.launch_time = datetime.utcnow()
 bot.remove_command('help')
 

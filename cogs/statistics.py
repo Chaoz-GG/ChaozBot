@@ -352,10 +352,10 @@ class Statistics(commands.Cog):
         else:
             async with ctx.typing():
                 requests.get(f'http://localhost:5000/stats/update/mm/{get_steam_id(ctx.author.id)}',
-                             timeout=30).json()
+                             timeout=30)
 
                 requests.get(f'http://localhost:5000/stats/update/faceit/{get_steam_id(ctx.author.id)}',
-                             timeout=30).json()
+                             timeout=30)
 
                 return await reply_message(ctx=ctx,
                                            content='The stats have been updated.',

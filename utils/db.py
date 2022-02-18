@@ -53,7 +53,7 @@ def get_steam_ids():
     cursor = db.cursor(buffered=True)
 
     # noinspection SqlDialectInspection, SqlNoDataSourceInspection
-    cursor.execute(f'select STEAM_ID from Statistics;')
+    cursor.execute(f'select STEAM_ID from Users;')
 
     res = cursor.fetchall()
 
@@ -139,13 +139,20 @@ def add_user(user_id: int, steam_id: int):
     db.close()
 
 
-def remove_user(user_id: int):
+def remove_user(user_id: int, steam_id: int):
     db = mysql.connector.connect(host=db_host, port=db_port, user=db_user,
                                  passwd=db_password, database=db_name)
     cursor = db.cursor(buffered=True)
 
     # noinspection SqlDialectInspection,SqlNoDataSourceInspection
-    cursor.execute('delete from Users where USER_ID = {user_id};', (user_id, ))
+    cursor.execute('delete from Users where USER_ID = %s;', (user_id, ))
+
+    # noinspection SqlDialectInspection,SqlNoDataSourceInspection
+    cursor.execute('delete from MM_Stats where STEAM_ID = %s;', (steam_id, ))
+
+    # noinspection SqlDialectInspection,SqlNoDataSourceInspection
+    cursor.execute('delete from MM_Stats where STEAM_ID = %s;', (steam_id, ))
+
     db.commit()
 
     cursor.close()

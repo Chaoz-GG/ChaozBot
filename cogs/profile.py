@@ -13,7 +13,7 @@ from steam.enums import EPersonaState
 
 from utils.tools import make_list_embed, generate_token, reply_message
 from utils.db import already_exists, has_generated_token, initiate_auth, cleanup_auth, get_token, add_user, \
-    remove_user, update_bio, update_country
+    remove_user, update_bio, update_country, get_steam_id, get_steam_ids
 
 
 class Profile(commands.Cog):
@@ -155,6 +155,11 @@ class Profile(commands.Cog):
                 # noinspection PyUnresolvedReferences
                 steam_user = self.steamAPI.ISteamUser.GetPlayerSummaries_v2(steamids=steam_id)["response"]["players"][0]
 
+                if int(steam_user["steamid"]) in get_steam_ids():
+                    return await reply_message(ctx=ctx,
+                                               content='This Steam account has already been linked by another user.',
+                                               emoji=self.bot.emoji2)
+
             except (requests.HTTPError, IndexError):
                 message = 'No such user found ... make sure you are using a valid Steam community ID/URL!'
                 return await reply_message(ctx=ctx, content=message, emoji=self.bot.emoji2)
@@ -192,7 +197,9 @@ class Profile(commands.Cog):
     async def _unlink(self, ctx):
 
         if already_exists(ctx.author.id):
-            remove_user(ctx.author.id)
+            steam_id = get_steam_id(ctx.author.id)
+
+            remove_user(ctx.author.id, steam_id)
 
             return await reply_message(ctx=ctx,
                                        content='Your Steam account has been unlinked.',
