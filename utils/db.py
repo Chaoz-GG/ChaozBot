@@ -151,7 +151,7 @@ def remove_user(user_id: int, steam_id: int):
     cursor.execute('delete from MM_Stats where STEAM_ID = %s;', (steam_id, ))
 
     # noinspection SqlDialectInspection,SqlNoDataSourceInspection
-    cursor.execute('delete from MM_Stats where STEAM_ID = %s;', (steam_id, ))
+    cursor.execute('delete from FaceIT_Stats where STEAM_ID = %s;', (steam_id, ))
 
     db.commit()
 
