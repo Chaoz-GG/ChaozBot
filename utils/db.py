@@ -19,7 +19,7 @@ def already_exists(user_id: int):
     cursor = db.cursor(buffered=True)
 
     # noinspection SqlDialectInspection, SqlNoDataSourceInspection
-    cursor.execute('select USER_ID from Users;')
+    cursor.execute('select USER_ID from users;')
 
     for i in cursor:
         if user_id in i:
@@ -37,7 +37,7 @@ def get_steam_id(user_id: int):
     cursor = db.cursor(buffered=True)
 
     # noinspection SqlDialectInspection, SqlNoDataSourceInspection
-    cursor.execute('select STEAM_ID from Users where USER_ID = %s;', (user_id, ))
+    cursor.execute('select STEAM_ID from users where USER_ID = %s;', (user_id, ))
 
     res = cursor.fetchone()[0]
 
@@ -53,7 +53,7 @@ def get_steam_ids():
     cursor = db.cursor(buffered=True)
 
     # noinspection SqlDialectInspection, SqlNoDataSourceInspection
-    cursor.execute(f'select STEAM_ID from Users;')
+    cursor.execute(f'select STEAM_ID from users;')
 
     res = cursor.fetchall()
 
@@ -72,7 +72,7 @@ def has_generated_token(user_id: int):
     cursor = db.cursor(buffered=True)
 
     # noinspection SqlDialectInspection, SqlNoDataSourceInspection
-    cursor.execute('select USER_ID from Authentication;')
+    cursor.execute('select USER_ID from authentication;')
 
     for i in cursor:
         if user_id in i:
@@ -90,7 +90,7 @@ def initiate_auth(user_id: int, token: str):
     cursor = db.cursor(buffered=True)
 
     # noinspection SqlDialectInspection,SqlNoDataSourceInspection
-    cursor.execute('insert into Authentication (USER_ID, TOKEN) values(%s, %s);', (user_id, token))
+    cursor.execute('insert into authentication (USER_ID, TOKEN) values(%s, %s);', (user_id, token))
     db.commit()
 
     cursor.close()
@@ -103,7 +103,7 @@ def cleanup_auth(user_id: int):
     cursor = db.cursor(buffered=True)
 
     # noinspection SqlDialectInspection,SqlNoDataSourceInspection
-    cursor.execute('delete from Authentication where USER_ID = %s;', (user_id, ))
+    cursor.execute('delete from authentication where USER_ID = %s;', (user_id, ))
     db.commit()
 
     cursor.close()
@@ -116,7 +116,7 @@ def get_token(user_id: int):
     cursor = db.cursor(buffered=True)
 
     # noinspection SqlDialectInspection, SqlNoDataSourceInspection
-    cursor.execute('select TOKEN from Authentication where USER_ID = %s;', (user_id, ))
+    cursor.execute('select TOKEN from authentication where USER_ID = %s;', (user_id, ))
 
     res = cursor.fetchone()
 
@@ -132,7 +132,7 @@ def add_user(user_id: int, steam_id: int):
     cursor = db.cursor(buffered=True)
 
     # noinspection SqlDialectInspection,SqlNoDataSourceInspection
-    cursor.execute('insert into Users (USER_ID, STEAM_ID) values(%s, %s);', (user_id, steam_id))
+    cursor.execute('insert into users (USER_ID, STEAM_ID) values(%s, %s);', (user_id, steam_id))
     db.commit()
 
     cursor.close()
@@ -145,13 +145,13 @@ def remove_user(user_id: int, steam_id: int):
     cursor = db.cursor(buffered=True)
 
     # noinspection SqlDialectInspection,SqlNoDataSourceInspection
-    cursor.execute('delete from Users where USER_ID = %s;', (user_id, ))
+    cursor.execute('delete from users where USER_ID = %s;', (user_id, ))
 
     # noinspection SqlDialectInspection,SqlNoDataSourceInspection
-    cursor.execute('delete from MM_Stats where STEAM_ID = %s;', (steam_id, ))
+    cursor.execute('delete from mm_stats where STEAM_ID = %s;', (steam_id, ))
 
     # noinspection SqlDialectInspection,SqlNoDataSourceInspection
-    cursor.execute('delete from FaceIT_Stats where STEAM_ID = %s;', (steam_id, ))
+    cursor.execute('delete from faceit_stats where STEAM_ID = %s;', (steam_id, ))
 
     db.commit()
 
@@ -165,7 +165,7 @@ def get_bio(user_id: int):
     cursor = db.cursor(buffered=True)
 
     # noinspection SqlDialectInspection, SqlNoDataSourceInspection
-    cursor.execute('select BIO from Users where USER_ID = %s;', (user_id, ))
+    cursor.execute('select BIO from users where USER_ID = %s;', (user_id, ))
 
     res = cursor.fetchone()[0]
 
@@ -181,7 +181,7 @@ def update_bio(user_id: int, bio: str):
     cursor = db.cursor(buffered=True)
 
     # noinspection SqlDialectInspection,SqlNoDataSourceInspection
-    cursor.execute('update Users SET BIO = %s where USER_ID = %s;', (bio, user_id))
+    cursor.execute('update users SET BIO = %s where USER_ID = %s;', (bio, user_id))
     db.commit()
 
     cursor.close()
@@ -194,7 +194,7 @@ def get_country(user_id: int):
     cursor = db.cursor(buffered=True)
 
     # noinspection SqlDialectInspection, SqlNoDataSourceInspection
-    cursor.execute('select COUNTRY from Users where USER_ID = %s;', (user_id, ))
+    cursor.execute('select COUNTRY from users where USER_ID = %s;', (user_id, ))
 
     res = cursor.fetchone()[0]
 
@@ -210,7 +210,7 @@ def update_country(user_id: int, country: str):
     cursor = db.cursor(buffered=True)
 
     # noinspection SqlDialectInspection,SqlNoDataSourceInspection
-    cursor.execute('update Users SET COUNTRY = %s where USER_ID = %s;', (country, user_id))
+    cursor.execute('update users SET COUNTRY = %s where USER_ID = %s;', (country, user_id))
     db.commit()
 
     cursor.close()
