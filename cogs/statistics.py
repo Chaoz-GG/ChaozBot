@@ -30,7 +30,7 @@ class Statistics(commands.Cog):
 
         self.stats_text_color = '#ffffff'
         
-        self.font = ImageFont.load_default()
+        self.font = 'assets/fonts/arial.ttf'
 
         self.mm_ranks = {
             0: 'Unranked',
