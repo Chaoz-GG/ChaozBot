@@ -29,6 +29,8 @@ class Statistics(commands.Cog):
         self.steamAPI = WebAPI(self.key)
 
         self.stats_text_color = '#ffffff'
+        
+        self.font = ImageFont.load_default()
 
         self.mm_ranks = {
             0: 'Unranked',
@@ -165,14 +167,14 @@ class Statistics(commands.Cog):
                 else:
                     _bio = "Bio not set."
 
-                new.text((320, 155), _two, font=ImageFont.truetype("arial.ttf", 30), fill=self.stats_text_color)
-                new.text((-75, 300), _three, font=ImageFont.truetype("arial.ttf", 30), fill=self.stats_text_color)
-                new.text((250, 300), _four, font=ImageFont.truetype("arial.ttf", 30), fill=self.stats_text_color)
-                new.text((-75, 500), _five, font=ImageFont.truetype("arial.ttf", 30), fill=self.stats_text_color)
-                new.text((265, 500), _six, font=ImageFont.truetype("arial.ttf", 25), fill=self.stats_text_color)
+                new.text((320, 155), _two, font=ImageFont.truetype(self.font, 30), fill=self.stats_text_color)
+                new.text((-75, 300), _three, font=ImageFont.truetype(self.font, 30), fill=self.stats_text_color)
+                new.text((250, 300), _four, font=ImageFont.truetype(self.font, 30), fill=self.stats_text_color)
+                new.text((-75, 500), _five, font=ImageFont.truetype(self.font, 30), fill=self.stats_text_color)
+                new.text((265, 500), _six, font=ImageFont.truetype(self.font, 25), fill=self.stats_text_color)
                 new.text((720, 410), _bio, font=ImageFont.truetype("assets/fonts/DejaVuSans.ttf", 25),
                          fill=self.stats_text_color)
-                new.text((605, 340), _country, font=ImageFont.truetype("arial.ttf", 25), fill=self.stats_text_color)
+                new.text((605, 340), _country, font=ImageFont.truetype(self.font, 25), fill=self.stats_text_color)
 
                 file_name = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(10))
 
@@ -314,14 +316,14 @@ class Statistics(commands.Cog):
                 else:
                     _bio = "Bio not set."
 
-                new.text((280, 155), _two, font=ImageFont.truetype("arial.ttf", 30), fill=self.stats_text_color)
-                new.text((-105, 300), _three, font=ImageFont.truetype("arial.ttf", 30), fill=self.stats_text_color)
-                new.text((260, 350), _four, font=ImageFont.truetype("arial.ttf", 30), fill=self.stats_text_color)
-                new.text((-105, 500), _five, font=ImageFont.truetype("arial.ttf", 30), fill=self.stats_text_color)
-                new.text((240, 500), _six, font=ImageFont.truetype("arial.ttf", 25), fill=self.stats_text_color)
+                new.text((280, 155), _two, font=ImageFont.truetype(self.font, 30), fill=self.stats_text_color)
+                new.text((-105, 300), _three, font=ImageFont.truetype(self.font, 30), fill=self.stats_text_color)
+                new.text((260, 350), _four, font=ImageFont.truetype(self.font, 30), fill=self.stats_text_color)
+                new.text((-105, 500), _five, font=ImageFont.truetype(self.font, 30), fill=self.stats_text_color)
+                new.text((240, 500), _six, font=ImageFont.truetype(self.font, 25), fill=self.stats_text_color)
                 new.text((720, 410), _bio, font=ImageFont.truetype("assets/fonts/DejaVuSans.ttf", 25),
                          fill=self.stats_text_color)
-                new.text((575, 340), _country, font=ImageFont.truetype("arial.ttf", 25), fill=self.stats_text_color)
+                new.text((575, 340), _country, font=ImageFont.truetype(self.font, 25), fill=self.stats_text_color)
 
                 file_name = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(10))
 
