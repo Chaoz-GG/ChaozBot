@@ -74,6 +74,11 @@ class Statistics(commands.Cog):
 
                 stats = requests.get(f'http://localhost:5000/stats/view/mm/{steam_id}').json()
 
+                if "error" in stats.keys():
+                    return await reply_message(ctx=ctx,
+                                               content='No matchmaking stats found for this user.',
+                                               emoji=self.bot.emoji2)
+
                 # noinspection PyUnresolvedReferences
                 steam_user = self.steamAPI.ISteamUser.GetPlayerSummaries_v2(steamids=steam_id)["response"]["players"][0]
 
