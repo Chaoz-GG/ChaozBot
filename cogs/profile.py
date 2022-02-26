@@ -187,7 +187,7 @@ class Profile(commands.Cog):
 
                 else:
                     return await reply_message(ctx=ctx,
-                                               content='Verification token could not be detected, '
+                                               content=f'Verification token (`{token}`) could not be detected, '
                                                        'please make sure the changes have been saved.',
                                                emoji=self.bot.emoji1)
 

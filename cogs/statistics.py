@@ -131,7 +131,7 @@ class Statistics(commands.Cog):
                 Country:       {country}
                 """
 
-                new.text((20, 20), 'Official Matchmaking', font=ImageFont.truetype(self.font, 45))
+                new.text((20, 20), 'Matchmaking Stats', font=ImageFont.truetype(self.font, 45))
 
                 _two = f"""
                 ADR: {stats["adr"]}
@@ -280,7 +280,7 @@ class Statistics(commands.Cog):
                     Country:       {country}
                     """
 
-                new.text((20, 20), 'FaceIT', font=ImageFont.truetype(self.font, 45))
+                new.text((20, 20), 'FaceIT Stats', font=ImageFont.truetype(self.font, 45))
 
                 _two = f"""
                     ELO: {stats["elo"]}
