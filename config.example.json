@@ -2,9 +2,7 @@
   "bot_token"             : "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
   "prefix"                : "$",
 
-  "whitelist"             : [903505291583295498, 941220937834057788],
-
-  "log_channel_id"        : 12345,
+  "whitelist"             : 903505291583295498,
 
   "db_name"               : "XXXXX",
   "db_user"               : "XXXXX",

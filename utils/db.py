@@ -118,7 +118,7 @@ def get_token(user_id: int):
     # noinspection SqlDialectInspection, SqlNoDataSourceInspection
     cursor.execute('select TOKEN from authentication where USER_ID = %s;', (user_id, ))
 
-    res = cursor.fetchone()
+    res = cursor.fetchone()[0]
 
     cursor.close()
     db.close()
