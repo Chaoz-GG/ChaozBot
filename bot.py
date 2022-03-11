@@ -28,6 +28,9 @@ with open('config.json') as json_file:
     token = data['bot_token']
     whitelist = data['whitelist']
     steam_key = data['steam_key']
+    mm_rank_role_ids = data['mm_rank_role_ids']
+    faceit_rank_role_ids = data['faceit_rank_role_ids']
+    region_role_ids = data['region_role_ids']
 
 logging.basicConfig(format='%(asctime)s - [%(levelname)s] %(message)s', level=logging.INFO)
 
@@ -53,7 +56,9 @@ bot.emoji2 = '\u274C'
 bot.embed_colour = 0xc29e29
 
 bot.stats_text_color = '#ffffff'
+
 bot.font = 'assets/fonts/arial.ttf'
+
 bot.mm_ranks = {
             0: 'Unranked',
             1: 'Silver 1',
@@ -75,6 +80,10 @@ bot.mm_ranks = {
             17: 'Supreme Master First Class',
             18: 'Global Elite'
         }
+
+bot.mm_rank_role_ids = mm_rank_role_ids
+bot.faceit_rank_role_ids = faceit_rank_role_ids
+bot.region_role_ids = region_role_ids
 
 
 @bot.event
@@ -169,7 +178,7 @@ async def _steam(ctx: discord.Interaction, community_id: str):
         # noinspection PyUnresolvedReferences
         steam_user = bot.steamAPI.ISteamUser.GetPlayerSummaries_v2(steamids=steam_id)["response"]["players"][0]
 
-    except (requests.HTTPError, IndexError):
+    except (requests.HTTPError, requests.exceptions.HTTPError, IndexError):
         message = 'No such user found ... make sure you are using a valid Steam community ID/URL!'
         return await ctx.edit_original_message(content=message)
 
@@ -293,8 +302,35 @@ async def _link(ctx: discord.Interaction, community_id: str):
             add_user(ctx.user.id, steam_user["steamid"])
             cleanup_auth(ctx.user.id)
 
-            return await ctx.edit_original_message(content='Verification successful! You may now remove the token '
-                                                           'from your profile name on Steam.')
+            if "loccountrycode" in steam_user.keys():
+                res = requests.get(f'https://restcountries.com/v3.1/alpha/{steam_user["loccountrycode"]}').json()
+                update_country(ctx.user.id, res[0]["name"]["common"])
+
+                region = res[0]["region"]
+
+                if region == "Americas":
+                    region = res[0]["subregion"]
+
+                for role_id in bot.region_role_ids.values():
+                    role = ctx.guild.get_role(role_id)
+
+                    if role in ctx.user.roles:
+                        await ctx.user.remove_roles(role)
+
+                region_role_id = bot.region_role_ids[region]
+
+                region_role = ctx.guild.get_role(region_role_id)
+
+                await ctx.user.add_roles(region_role)
+
+                return await ctx.edit_original_message(content='Verification successful! You may now remove the token '
+                                                               'from your profile name on Steam.')
+
+            else:
+                return await ctx.edit_original_message(content='Verification successful! You may now remove the token '
+                                                               'from your profile name on Steam.\n\n**NOTE:** '
+                                                               'You do not have a country listed on your Steam profile.'
+                                                               ' Please use the `/country` command to update it now.')
 
         else:
             return await ctx.edit_original_message(content=f'Verification token (`{_token}`) could not be detected, '
@@ -339,6 +375,14 @@ async def _country(ctx: discord.Interaction, *, country: str):
     await ctx.response.defer(thinking=True)
 
     if already_exists(ctx.user.id):
+        steam_id = get_steam_id(ctx.user.id)
+
+        # noinspection PyUnresolvedReferences
+        steam_user = bot.steamAPI.ISteamUser.GetPlayerSummaries_v2(steamids=steam_id)["response"]["players"][0]
+
+        if "loccountrycode" in steam_user.keys():
+            return await ctx.edit_original_message(content='Only users without a country listed on their Steam profile '
+                                                           'can use this command.')
 
         if len(country) > 25:
             return await ctx.edit_original_message(content='Country name cannot be more than 25 characters.')
@@ -352,6 +396,23 @@ async def _country(ctx: discord.Interaction, *, country: str):
 
         update_country(ctx.user.id, res[0]["name"]["common"])
 
+        region = res[0]["region"]
+
+        if region == "Americas":
+            region = res[0]["subregion"]
+
+        for role_id in bot.region_role_ids.values():
+            role = ctx.guild.get_role(role_id)
+
+            if role in ctx.user.roles:
+                await ctx.user.remove_roles(role)
+
+        region_role_id = bot.region_role_ids[region]
+
+        region_role = ctx.guild.get_role(region_role_id)
+
+        await ctx.user.add_roles(region_role)
+
         return await ctx.edit_original_message(content='Your country has been updated.')
 
     else:
@@ -363,7 +424,7 @@ async def _country(ctx: discord.Interaction, *, country: str):
                       description='Shows the matchmaking statistics of the author / the mentioned user, if found.')
 async def _mm_stats(ctx: discord.Interaction, member: discord.Member = None):
     await ctx.response.defer(thinking=True)
-    
+
     if member is None:
         member = ctx.user
 
@@ -471,6 +532,16 @@ async def _mm_stats(ctx: discord.Interaction, member: discord.Member = None):
         embed.set_image(url=f'attachment://{file_name}.png')
 
         embed.set_footer(text='Stats are updated every 12 hours.')
+
+        for role_id in bot.mm_rank_role_ids.values():
+            role = ctx.guild.get_role(role_id)
+
+            if role in member.roles:
+                await member.remove_roles(role)
+
+        rank_role = ctx.guild.get_role(bot.mm_rank_role_ids[stats["rank"]])
+
+        await member.add_roles(rank_role)
 
         await ctx.edit_original_message(attachments=[file], embed=embed)
 
@@ -595,6 +666,16 @@ async def _faceit_stats(ctx: discord.Interaction, member: discord.Member = None)
 
         embed.set_footer(text='Stats are updated every 12 hours.')
 
+        for role_id in bot.faceit_rank_role_ids.values():
+            role = ctx.guild.get_role(role_id)
+
+            if role in member.roles:
+                await member.remove_roles(role)
+
+        rank_role = ctx.guild.get_role(bot.faceit_rank_role_ids[str(stats["rank"])])
+
+        await member.add_roles(rank_role)
+
         await ctx.edit_original_message(attachments=[file], embed=embed)
 
 
@@ -618,6 +699,43 @@ async def _update(ctx: discord.Interaction):
         return await ctx.edit_original_message(content='The stats have been updated.')
 
 
+@app_commands.command(name='inv',
+                      description='Calculates the inventory value of the author / the mentioned user, if found.')
+async def _inv(ctx: discord.Interaction, member: discord.Member = None):
+    await ctx.response.defer(thinking=True)
+
+    if member is None:
+        member = ctx.user
+
+    if not already_exists(member.id):
+        return await ctx.edit_original_message(content='This user hasn\'t linked their steam account yet.')
+
+    else:
+        steam_id = get_steam_id(member.id)
+
+        inv = requests.get(f'http://localhost:5000/inventory/{steam_id}').json()
+
+        if "error" in inv.keys():
+            return await ctx.edit_original_message(content='No inventory details found for this user.')
+
+        # noinspection PyUnresolvedReferences
+        steam_user = bot.steamAPI.ISteamUser.GetPlayerSummaries_v2(steamids=steam_id)["response"]["players"][0]
+
+        embed = discord.Embed(colour=bot.embed_colour)
+
+        embed.title = steam_user["personaname"]
+        embed.url = f'https://steamcommunity.com/profiles/{steam_id}'
+
+        embed.description = f'`{inv["item_count"]}` items worth `${inv["value"]}`.'
+
+        view = discord.ui.View()
+        view.add_item(
+            discord.ui.Button(label='View Inventory', url=f'https://steamcommunity.com/profiles/{steam_id}/inventory/')
+        )
+
+        await ctx.edit_original_message(embed=embed, view=view)
+
+
 tree.add_command(_ping, guild=discord.Object(id=whitelist))
 tree.add_command(_help, guild=discord.Object(id=whitelist))
 tree.add_command(_steam, guild=discord.Object(id=whitelist))
@@ -628,6 +746,7 @@ tree.add_command(_country, guild=discord.Object(id=whitelist))
 tree.add_command(_mm_stats, guild=discord.Object(id=whitelist))
 tree.add_command(_faceit_stats, guild=discord.Object(id=whitelist))
 tree.add_command(_update, guild=discord.Object(id=whitelist))
+tree.add_command(_inv, guild=discord.Object(id=whitelist))
 
 if __name__ == '__main__':
     bot.run(token)

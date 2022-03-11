@@ -10,5 +10,49 @@
   "db_host"               : "localhost",
   "db_port"               : 3306,
 
-  "steam_key"             : "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+  "steam_key"             : "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+
+  "mm_rank_role_ids"      : {
+    "Unranked": 123,
+    "Silver 1": 946498367159165019,
+    "Silver 2": 946498418740711475,
+    "Silver 3": 946498538664255530,
+    "Silver 4": 946498565197422593,
+    "Silver Elite": 946498590191276152,
+    "Silver Elite Master": 946498625524101120,
+    "Gold Nova 1": 946498657920905256,
+    "Gold Nova 2": 946498703982723093,
+    "Gold Nova 3": 946498857951461416,
+    "Gold Nova Master": 946498894441873460,
+    "Master Guardian 1": 946498916902371409,
+    "Master Guardian 2": 946498968278421534,
+    "Master Guardian Elite": 946499004886286338,
+    "Distinguished Master Guardian": 946499053422800996,
+    "Legendary Eagle": 946499087392469112,
+    "Legendary Eagle Master": 946499119151742976,
+    "Supreme Master First Class": 946499160713101332,
+    "The Global Elite": 946499197295792179
+  },
+
+  "faceit_rank_role_ids"  : {
+    "1": 950861727531167804,
+    "2": 950862032775807016,
+    "3": 950862160332980245,
+    "4": 950862274241900574,
+    "5": 950862389912408065,
+    "6": 950862506358882304,
+    "7": 950862544858390559,
+    "8": 950862705416351814,
+    "9": 950862811561623562,
+    "10": 950862978863988807
+  },
+
+  "region_role_ids": {
+    "North America": 919229549257031690,
+    "South America": 919229870800764949,
+    "Europe": 919230192554238022,
+    "Asia": 919230480543539230,
+    "Africa": 951357535242321990,
+    "Oceania": 951357494431723530
+  }
 }
