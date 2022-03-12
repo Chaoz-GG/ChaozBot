@@ -137,3 +137,4 @@ cogs/core.py
 cogs/evaluate.py
 config.json
 test.py
+log.txt
