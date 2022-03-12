@@ -20,19 +20,23 @@ from PIL import Image, ImageFont, ImageDraw
 
 
 from utils.tools import make_list_embed, generate_token, split_string
-from utils.db import get_steam_ids, get_steam_id, already_exists, remove_user, has_generated_token, initiate_auth, \
-    cleanup_auth, get_token, add_user, get_bio, get_country, update_bio, update_country
+from utils.db import get_steam_ids, get_steam_id, get_user_id, already_exists, remove_user, has_generated_token, \
+    initiate_auth, cleanup_auth, get_token, add_user, get_bio, get_country, update_bio, update_country
 
 with open('config.json') as json_file:
     data = json.load(json_file)
     token = data['bot_token']
     whitelist = data['whitelist']
+    log_channel_id = data['log_channel_id']
+    update_frequency = data['update_frequency']
     steam_key = data['steam_key']
     mm_rank_role_ids = data['mm_rank_role_ids']
     faceit_rank_role_ids = data['faceit_rank_role_ids']
     region_role_ids = data['region_role_ids']
 
-logging.basicConfig(format='%(asctime)s - [%(levelname)s] %(message)s', level=logging.INFO)
+logging.basicConfig(filename='log.txt',
+                    filemode='a',
+                    format='%(asctime)s - [%(levelname)s] %(message)s', level=logging.INFO)
 
 
 # noinspection PyMethodMayBeStatic
@@ -86,17 +90,72 @@ bot.faceit_rank_role_ids = faceit_rank_role_ids
 bot.region_role_ids = region_role_ids
 
 
+# Auto-update stats
+@tasks.loop(hours=update_frequency)
+async def _update_stats():
+    guild = bot.get_guild(whitelist)
+
+    for steam_id in get_steam_ids():
+        requests.get(f'http://localhost:5000/stats/update/mm/{steam_id}', timeout=30)
+        requests.get(f'http://localhost:5000/stats/update/faceit/{steam_id}', timeout=30)
+
+        member = guild.get_member(get_user_id(steam_id))
+
+        stats = requests.get(f'http://localhost:5000/stats/view/mm/{steam_id}').json()
+
+        if "error" not in stats.keys():
+            for role_id in bot.mm_rank_role_ids.values():
+                role = guild.get_role(role_id)
+
+                if role in member.roles:
+                    await member.remove_roles(role)
+
+            rank_role = guild.get_role(bot.mm_rank_role_ids[stats["rank"]])
+
+            await member.add_roles(rank_role)
+
+        stats = requests.get(f'http://localhost:5000/stats/view/faceit/{steam_id}').json()
+
+        if "error" not in stats.keys():
+            for role_id in bot.faceit_rank_role_ids.values():
+                role = guild.get_role(role_id)
+
+                if role in member.roles:
+                    await member.remove_roles(role)
+
+            rank_role = guild.get_role(bot.faceit_rank_role_ids[str(stats["rank"])])
+
+            await member.add_roles(rank_role)
+
+        # noinspection PyUnresolvedReferences
+        steam_user = bot.steamAPI.ISteamUser.GetPlayerSummaries_v2(steamids=steam_id)["response"]["players"][0]
+
+        if "loccountrycode" in steam_user.keys():
+            res = requests.get(f'https://restcountries.com/v3.1/alpha/{steam_user["loccountrycode"]}').json()
+            update_country(member.id, res[0]["name"]["common"])
+
+            region = res[0]["region"]
+
+            if region == "Americas":
+                region = res[0]["subregion"]
+
+            for role_id in bot.region_role_ids.values():
+                role = guild.get_role(role_id)
+
+                if role in member.roles:
+                    await member.remove_roles(role)
+
+            region_role_id = bot.region_role_ids[region]
+
+            region_role = guild.get_role(region_role_id)
+
+            await member.add_roles(region_role)
+
+
 @bot.event
 async def on_ready():
     await tree.sync(guild=discord.Object(id=whitelist))
-
-
-# Auto-update stats
-@tasks.loop(hours=12)
-async def _update_stats():
-    for steam_id in get_steam_ids():
-        requests.get(f'http://localhost:5000/stats/update/mm/{steam_id}')
-        requests.get(f'http://localhost:5000/stats/update/faceit/{steam_id}')
+    _update_stats.start()
 
 
 # Leave unexpected servers
@@ -302,6 +361,32 @@ async def _link(ctx: discord.Interaction, community_id: str):
             add_user(ctx.user.id, steam_user["steamid"])
             cleanup_auth(ctx.user.id)
 
+            stats = requests.get(f'http://localhost:5000/stats/view/mm/{steam_id}').json()
+
+            if "error" not in stats.keys():
+                for role_id in bot.mm_rank_role_ids.values():
+                    role = ctx.guild.get_role(role_id)
+
+                    if role in ctx.user.roles:
+                        await ctx.user.remove_roles(role)
+
+                rank_role = ctx.guild.get_role(bot.mm_rank_role_ids[stats["rank"]])
+
+                await ctx.user.add_roles(rank_role)
+
+            stats = requests.get(f'http://localhost:5000/stats/view/faceit/{steam_id}').json()
+
+            if "error" not in stats.keys():
+                for role_id in bot.faceit_rank_role_ids.values():
+                    role = ctx.guild.get_role(role_id)
+
+                    if role in ctx.user.roles:
+                        await ctx.user.remove_roles(role)
+
+                rank_role = ctx.guild.get_role(bot.faceit_rank_role_ids[str(stats["rank"])])
+
+                await ctx.user.add_roles(rank_role)
+
             if "loccountrycode" in steam_user.keys():
                 res = requests.get(f'https://restcountries.com/v3.1/alpha/{steam_user["loccountrycode"]}').json()
                 update_country(ctx.user.id, res[0]["name"]["common"])
@@ -323,14 +408,17 @@ async def _link(ctx: discord.Interaction, community_id: str):
 
                 await ctx.user.add_roles(region_role)
 
-                return await ctx.edit_original_message(content='Verification successful! You may now remove the token '
-                                                               'from your profile name on Steam.')
+                await ctx.edit_original_message(content='Verification successful! You may now remove the token '
+                                                        'from your profile name on Steam.')
 
             else:
-                return await ctx.edit_original_message(content='Verification successful! You may now remove the token '
-                                                               'from your profile name on Steam.\n\n**NOTE:** '
-                                                               'You do not have a country listed on your Steam profile.'
-                                                               ' Please use the `/country` command to update it now.')
+                await ctx.edit_original_message(content='Verification successful! You may now remove the token '
+                                                        'from your profile name on Steam.\n\n**NOTE:** '
+                                                        'You do not have a country listed on your Steam profile.'
+                                                        ' Please use the `/country` command to update it now.')
+
+            log_channel = ctx.guild.get_channel(log_channel_id)
+            return await log_channel.send(f'`{ctx.user}` have linked their Steam profile.')
 
         else:
             return await ctx.edit_original_message(content=f'Verification token (`{_token}`) could not be detected, '
@@ -417,7 +505,7 @@ async def _country(ctx: discord.Interaction, *, country: str):
 
     else:
         return await ctx.edit_original_message(content='You have not linked your Steam account yet.'
-                                                       'Please do so first with the `$link steam_id` command.')
+                                                       'Please do so first with the `/link` command.')
 
 
 @app_commands.command(name='mmstats',
@@ -531,7 +619,7 @@ async def _mm_stats(ctx: discord.Interaction, member: discord.Member = None):
 
         embed.set_image(url=f'attachment://{file_name}.png')
 
-        embed.set_footer(text='Stats are updated every 12 hours.')
+        embed.set_footer(text=f'Stats are updated every {update_frequency} hours.')
 
         for role_id in bot.mm_rank_role_ids.values():
             role = ctx.guild.get_role(role_id)
@@ -664,7 +752,7 @@ async def _faceit_stats(ctx: discord.Interaction, member: discord.Member = None)
 
         embed.set_image(url=f'attachment://{file_name}.png')
 
-        embed.set_footer(text='Stats are updated every 12 hours.')
+        embed.set_footer(text=f'Stats are updated every {update_frequency} hours.')
 
         for role_id in bot.faceit_rank_role_ids.values():
             role = ctx.guild.get_role(role_id)
@@ -689,12 +777,63 @@ async def _update(ctx: discord.Interaction):
         return await ctx.edit_original_message(content='You have not linked your steam account yet.')
 
     else:
+        steam_id = get_steam_id(ctx.user.id)
 
-        requests.get(f'http://localhost:5000/stats/update/mm/{get_steam_id(ctx.user.id)}',
+        requests.get(f'http://localhost:5000/stats/update/mm/{steam_id}',
                      timeout=30)
 
-        requests.get(f'http://localhost:5000/stats/update/faceit/{get_steam_id(ctx.user.id)}',
+        requests.get(f'http://localhost:5000/stats/update/faceit/{steam_id}',
                      timeout=30)
+
+        stats = requests.get(f'http://localhost:5000/stats/view/mm/{steam_id}').json()
+
+        if "error" not in stats.keys():
+            for role_id in bot.mm_rank_role_ids.values():
+                role = ctx.guild.get_role(role_id)
+
+                if role in ctx.user.roles:
+                    await ctx.user.remove_roles(role)
+
+            rank_role = ctx.guild.get_role(bot.mm_rank_role_ids[stats["rank"]])
+
+            await ctx.user.add_roles(rank_role)
+
+        stats = requests.get(f'http://localhost:5000/stats/view/faceit/{steam_id}').json()
+
+        if "error" not in stats.keys():
+            for role_id in bot.faceit_rank_role_ids.values():
+                role = ctx.guild.get_role(role_id)
+
+                if role in ctx.user.roles:
+                    await ctx.user.remove_roles(role)
+
+            rank_role = ctx.guild.get_role(bot.faceit_rank_role_ids[str(stats["rank"])])
+
+            await ctx.user.add_roles(rank_role)
+
+        # noinspection PyUnresolvedReferences
+        steam_user = bot.steamAPI.ISteamUser.GetPlayerSummaries_v2(steamids=steam_id)["response"]["players"][0]
+
+        if "loccountrycode" in steam_user.keys():
+            res = requests.get(f'https://restcountries.com/v3.1/alpha/{steam_user["loccountrycode"]}').json()
+            update_country(ctx.user.id, res[0]["name"]["common"])
+
+            region = res[0]["region"]
+
+            if region == "Americas":
+                region = res[0]["subregion"]
+
+            for role_id in bot.region_role_ids.values():
+                role = ctx.guild.get_role(role_id)
+
+                if role in ctx.user.roles:
+                    await ctx.user.remove_roles(role)
+
+            region_role_id = bot.region_role_ids[region]
+
+            region_role = ctx.guild.get_role(region_role_id)
+
+            await ctx.user.add_roles(region_role)
 
         return await ctx.edit_original_message(content='The stats have been updated.')
 

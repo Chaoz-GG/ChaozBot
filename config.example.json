@@ -4,6 +4,9 @@
 
   "whitelist"             : 903505291583295498,
 
+  "log_channel_id"        : 950400174407168090,
+  "update_frequency"      : 12,
+
   "db_name"               : "XXXXX",
   "db_user"               : "XXXXX",
   "db_password"           : "XXXXX",

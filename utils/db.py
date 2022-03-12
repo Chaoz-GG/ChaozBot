@@ -47,6 +47,22 @@ def get_steam_id(user_id: int):
     return res
 
 
+def get_user_id(steam_id: int):
+    db = mysql.connector.connect(host=db_host, port=db_port, user=db_user,
+                                 passwd=db_password, database=db_name)
+    cursor = db.cursor(buffered=True)
+
+    # noinspection SqlDialectInspection, SqlNoDataSourceInspection
+    cursor.execute('select USER_ID from users where STEAM_ID = %s;', (steam_id, ))
+
+    res = cursor.fetchone()[0]
+
+    cursor.close()
+    db.close()
+
+    return res
+
+
 def get_steam_ids():
     db = mysql.connector.connect(host=db_host, port=db_port, user=db_user,
                                  passwd=db_password, database=db_name)
