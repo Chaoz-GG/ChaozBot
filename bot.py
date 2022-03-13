@@ -57,7 +57,7 @@ bot.steamAPI = WebAPI(steam_key)
 bot.emoji1 = '\u2705'
 bot.emoji2 = '\u274C'
 
-bot.embed_colour = 0xc29e29
+bot.embed_colour = 0xffffff
 
 bot.stats_text_color = '#ffffff'
 
@@ -96,36 +96,49 @@ async def _update_stats():
     guild = bot.get_guild(whitelist)
 
     for steam_id in get_steam_ids():
-        requests.get(f'http://localhost:5000/stats/update/mm/{steam_id}', timeout=30)
-        requests.get(f'http://localhost:5000/stats/update/faceit/{steam_id}', timeout=30)
+        user_id = get_user_id(steam_id)
+        member = guild.get_member(user_id)
 
-        member = guild.get_member(get_user_id(steam_id))
+        if not member:
+            remove_user(user_id, steam_id)
+            continue
 
-        stats = requests.get(f'http://localhost:5000/stats/view/mm/{steam_id}').json()
+        try:
+            requests.get(f'http://localhost:5000/stats/update/mm/{steam_id}', timeout=30)
+            requests.get(f'http://localhost:5000/stats/update/faceit/{steam_id}', timeout=30)
 
-        if "error" not in stats.keys():
-            for role_id in bot.mm_rank_role_ids.values():
-                role = guild.get_role(role_id)
+        except requests.exceptions.Timeout:
+            pass
 
-                if role in member.roles:
-                    await member.remove_roles(role)
+        try:
+            stats = requests.get(f'http://localhost:5000/stats/view/mm/{steam_id}', timeout=30).json()
 
-            rank_role = guild.get_role(bot.mm_rank_role_ids[stats["rank"]])
+            if "error" not in stats.keys():
+                for role_id in bot.mm_rank_role_ids.values():
+                    role = guild.get_role(role_id)
 
-            await member.add_roles(rank_role)
+                    if role in member.roles:
+                        await member.remove_roles(role)
 
-        stats = requests.get(f'http://localhost:5000/stats/view/faceit/{steam_id}').json()
+                rank_role = guild.get_role(bot.mm_rank_role_ids[stats["rank"]])
 
-        if "error" not in stats.keys():
-            for role_id in bot.faceit_rank_role_ids.values():
-                role = guild.get_role(role_id)
+                await member.add_roles(rank_role)
 
-                if role in member.roles:
-                    await member.remove_roles(role)
+            stats = requests.get(f'http://localhost:5000/stats/view/faceit/{steam_id}', timeout=30).json()
 
-            rank_role = guild.get_role(bot.faceit_rank_role_ids[str(stats["rank"])])
+            if "error" not in stats.keys():
+                for role_id in bot.faceit_rank_role_ids.values():
+                    role = guild.get_role(role_id)
 
-            await member.add_roles(rank_role)
+                    if role in member.roles:
+                        await member.remove_roles(role)
+
+                rank_role = guild.get_role(bot.faceit_rank_role_ids[str(stats["rank"])])
+
+                await member.add_roles(rank_role)
+
+        except requests.exceptions.Timeout:
+            pass
 
         # noinspection PyUnresolvedReferences
         steam_user = bot.steamAPI.ISteamUser.GetPlayerSummaries_v2(steamids=steam_id)["response"]["players"][0]
@@ -517,8 +530,8 @@ async def _mm_stats(ctx: discord.Interaction, member: discord.Member = None):
         member = ctx.user
 
     if not already_exists(member.id):
-
-        return await ctx.edit_original_message(content='This user hasn\'t linked their steam account yet.')
+        return await ctx.edit_original_message(content='This user hasn\'t linked their steam account yet '
+                                                       '(use `/link`).')
 
     else:
         steam_id = get_steam_id(member.id)
@@ -578,7 +591,9 @@ async def _mm_stats(ctx: discord.Interaction, member: discord.Member = None):
 
         __country = f"""Country:       {country}"""
 
-        new.text((20, 20), 'Matchmaking Stats', font=ImageFont.truetype(bot.font, 45))
+        new.text((20, 20), 'Matchmaking Stats',
+                 font=ImageFont.truetype('assets/fonts/Audiowide.ttf', 45),
+                 fill='#292929')
 
         _two = f"""ADR: {stats["adr"]}"""
 
@@ -644,7 +659,8 @@ async def _faceit_stats(ctx: discord.Interaction, member: discord.Member = None)
 
     if not already_exists(member.id):
 
-        return await ctx.edit_original_message(content='This user hasn\'t linked their steam account yet.')
+        return await ctx.edit_original_message(content='This user hasn\'t linked their steam account yet '
+                                                       '(use `/link`).')
 
     else:
         steam_id = get_steam_id(member.id)
@@ -711,7 +727,9 @@ async def _faceit_stats(ctx: discord.Interaction, member: discord.Member = None)
 
         __country = f"""Country:       {country}"""
 
-        new.text((20, 20), 'FaceIT Stats', font=ImageFont.truetype(bot.font, 45))
+        new.text((20, 20), 'FaceIT Stats',
+                 font=ImageFont.truetype('assets/fonts/Audiowide.ttf', 45),
+                 fill='#292929')
 
         _two = f"""ELO: {stats["elo"]}"""
 
@@ -779,37 +797,41 @@ async def _update(ctx: discord.Interaction):
     else:
         steam_id = get_steam_id(ctx.user.id)
 
-        requests.get(f'http://localhost:5000/stats/update/mm/{steam_id}',
-                     timeout=30)
+        try:
+            requests.get(f'http://localhost:5000/stats/update/mm/{steam_id}',
+                         timeout=30)
 
-        requests.get(f'http://localhost:5000/stats/update/faceit/{steam_id}',
-                     timeout=30)
+            requests.get(f'http://localhost:5000/stats/update/faceit/{steam_id}',
+                         timeout=30)
 
-        stats = requests.get(f'http://localhost:5000/stats/view/mm/{steam_id}').json()
+            stats = requests.get(f'http://localhost:5000/stats/view/mm/{steam_id}').json()
 
-        if "error" not in stats.keys():
-            for role_id in bot.mm_rank_role_ids.values():
-                role = ctx.guild.get_role(role_id)
+            if "error" not in stats.keys():
+                for role_id in bot.mm_rank_role_ids.values():
+                    role = ctx.guild.get_role(role_id)
 
-                if role in ctx.user.roles:
-                    await ctx.user.remove_roles(role)
+                    if role in ctx.user.roles:
+                        await ctx.user.remove_roles(role)
 
-            rank_role = ctx.guild.get_role(bot.mm_rank_role_ids[stats["rank"]])
+                rank_role = ctx.guild.get_role(bot.mm_rank_role_ids[stats["rank"]])
 
-            await ctx.user.add_roles(rank_role)
+                await ctx.user.add_roles(rank_role)
 
-        stats = requests.get(f'http://localhost:5000/stats/view/faceit/{steam_id}').json()
+            stats = requests.get(f'http://localhost:5000/stats/view/faceit/{steam_id}').json()
 
-        if "error" not in stats.keys():
-            for role_id in bot.faceit_rank_role_ids.values():
-                role = ctx.guild.get_role(role_id)
+            if "error" not in stats.keys():
+                for role_id in bot.faceit_rank_role_ids.values():
+                    role = ctx.guild.get_role(role_id)
 
-                if role in ctx.user.roles:
-                    await ctx.user.remove_roles(role)
+                    if role in ctx.user.roles:
+                        await ctx.user.remove_roles(role)
 
-            rank_role = ctx.guild.get_role(bot.faceit_rank_role_ids[str(stats["rank"])])
+                rank_role = ctx.guild.get_role(bot.faceit_rank_role_ids[str(stats["rank"])])
 
-            await ctx.user.add_roles(rank_role)
+                await ctx.user.add_roles(rank_role)
+
+        except requests.exceptions.Timeout:
+            pass
 
         # noinspection PyUnresolvedReferences
         steam_user = bot.steamAPI.ISteamUser.GetPlayerSummaries_v2(steamids=steam_id)["response"]["players"][0]
@@ -847,7 +869,8 @@ async def _inv(ctx: discord.Interaction, member: discord.Member = None):
         member = ctx.user
 
     if not already_exists(member.id):
-        return await ctx.edit_original_message(content='This user hasn\'t linked their steam account yet.')
+        return await ctx.edit_original_message(content='This user hasn\'t linked their steam account yet. '
+                                                       '(use `/link`)')
 
     else:
         steam_id = get_steam_id(member.id)
