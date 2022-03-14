@@ -13,6 +13,7 @@ from io import BytesIO
 from datetime import datetime
 
 import requests
+import aiohttp
 from steam.webapi import WebAPI
 from steam.steamid import SteamID
 from steam.enums import EPersonaState
@@ -103,42 +104,40 @@ async def _update_stats():
             remove_user(user_id, steam_id)
             continue
 
-        try:
-            requests.get(f'http://localhost:5000/stats/update/mm/{steam_id}', timeout=30)
-            requests.get(f'http://localhost:5000/stats/update/faceit/{steam_id}', timeout=30)
+        async with aiohttp.ClientSession() as session:
+            async with session.get(f'http://localhost:5000/stats/update/mm/{steam_id}'):
+                pass
 
-        except requests.exceptions.Timeout:
-            pass
+            async with session.get(f'http://localhost:5000/stats/update/faceit/{steam_id}'):
+                pass
 
-        try:
-            stats = requests.get(f'http://localhost:5000/stats/view/mm/{steam_id}', timeout=30).json()
+            async with session.get(f'http://localhost:5000/stats/view/mm/{steam_id}') as stats:
+                stats = await stats.json()
 
-            if "error" not in stats.keys():
-                for role_id in bot.mm_rank_role_ids.values():
-                    role = guild.get_role(role_id)
+                if "error" not in stats.keys():
+                    for role_id in bot.mm_rank_role_ids.values():
+                        role = guild.get_role(role_id)
 
-                    if role in member.roles:
-                        await member.remove_roles(role)
+                        if role in member.roles:
+                            await member.remove_roles(role)
 
-                rank_role = guild.get_role(bot.mm_rank_role_ids[stats["rank"]])
+                    rank_role = guild.get_role(bot.mm_rank_role_ids[stats["rank"]])
 
-                await member.add_roles(rank_role)
+                    await member.add_roles(rank_role)
 
-            stats = requests.get(f'http://localhost:5000/stats/view/faceit/{steam_id}', timeout=30).json()
+            async with session.get(f'http://localhost:5000/stats/view/faceit/{steam_id}') as stats:
+                stats = await stats.json()
 
-            if "error" not in stats.keys():
-                for role_id in bot.faceit_rank_role_ids.values():
-                    role = guild.get_role(role_id)
+                if "error" not in stats.keys():
+                    for role_id in bot.faceit_rank_role_ids.values():
+                        role = guild.get_role(role_id)
 
-                    if role in member.roles:
-                        await member.remove_roles(role)
+                        if role in member.roles:
+                            await member.remove_roles(role)
 
-                rank_role = guild.get_role(bot.faceit_rank_role_ids[str(stats["rank"])])
+                    rank_role = guild.get_role(bot.faceit_rank_role_ids[str(stats["rank"])])
 
-                await member.add_roles(rank_role)
-
-        except requests.exceptions.Timeout:
-            pass
+                    await member.add_roles(rank_role)
 
         # noinspection PyUnresolvedReferences
         steam_user = bot.steamAPI.ISteamUser.GetPlayerSummaries_v2(steamids=steam_id)["response"]["players"][0]
