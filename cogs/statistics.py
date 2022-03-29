@@ -1,297 +1,437 @@
-#!/usr/bin/python3
-
-import discord
-from discord import app_commands
-
-import os
 import json
 import string
 import random
 from io import BytesIO
 
+import discord
+from discord import app_commands
+from discord.ext import commands
 
-import requests
+import aiohttp
 from steam.webapi import WebAPI
 from PIL import Image, ImageFont, ImageDraw
 
-from utils.tools import reply_message, reply_file, split_string
-from utils.db import already_exists, get_steam_id, get_bio, get_country
+from utils.tools import split_string
+from utils.db import get_steam_id, already_exists, get_bio, get_country, update_country, update_region, update_hours
+
+with open('config.json') as json_file:
+    data = json.load(json_file)
+    whitelist = data['whitelist']
+    update_frequency = data['update_frequency']
+    steam_key = data['steam_key']
+    mm_rank_role_ids = data['mm_rank_role_ids']
+    faceit_rank_role_ids = data['faceit_rank_role_ids']
+    region_role_ids = data['region_role_ids']
 
 
-@app_commands.command(name='mmstats',
-                      description='Shows the matchmaking statistics of the author / the mentioned user, if found.')
-async def _mm_stats(ctx: discord.Interaction, member: discord.Member = None):
-    await ctx.response.defer(thinking=True)
+class Statistics(commands.Cog):
+    def __init__(self, bot):
+        self.bot = bot
 
-    if member is None:
-        member = ctx.user
+        self.steamAPI = WebAPI(steam_key)
 
-    if not already_exists(member.id):
+        self.update_frequency = update_frequency
 
-        return await ctx.edit_original_message(content='This user hasn\'t linked their steam account yet.')
+        self.mm_ranks = {
+            0: 'Unranked',
+            1: 'Silver 1',
+            2: 'Silver 2',
+            3: 'Silver 3',
+            4: 'Silver 4',
+            5: 'Silver Elite',
+            6: 'Silver Elite Master',
+            7: 'Gold Nova 1',
+            8: 'Gold Nova 2',
+            9: 'Gold Nova 3',
+            10: 'Gold Nova Master',
+            11: 'Master Guardian 1',
+            12: 'Master Guardian 2',
+            13: 'Master Guardian Elite',
+            14: 'Distinguished Master Guardian',
+            15: 'Legendary Eagle',
+            16: 'Legendary Eagle Master',
+            17: 'Supreme Master First Class',
+            18: 'Global Elite'
+        }
 
-    else:
-        steam_id = get_steam_id(member.id)
+        self.stats_text_color = '#ffffff'
+        self.font = 'assets/fonts/arial.ttf'
+        self.title_font = 'assets/fonts/Audiowide.ttf'
+        self.bio_font = 'assets/fonts/DejaVuSans.ttf'
 
-        stats = requests.get(f'http://localhost:5000/stats/view/mm/{steam_id}').json()
+        self.mm_rank_role_ids = mm_rank_role_ids
+        self.faceit_rank_role_ids = faceit_rank_role_ids
+        self.region_role_ids = region_role_ids
 
-        if "error" in stats.keys():
-            return await ctx.edit_original_message(content='No matchmaking stats found for this user.')
+    @app_commands.command(name='mmstats',
+                          description='Shows the matchmaking statistics of the author / the mentioned user, if found.')
+    @app_commands.guilds(whitelist)
+    async def _mm_stats(self, ctx: discord.Interaction, member: discord.Member = None):
+        await ctx.response.defer(thinking=True)
 
-        # noinspection PyUnresolvedReferences
-        steam_user = bot.steamAPI.ISteamUser.GetPlayerSummaries_v2(steamids=steam_id)["response"]["players"][0]
+        if member is None:
+            member = ctx.user
 
-        embed = discord.Embed(colour=bot.embed_colour)
-
-        embed.title = steam_user["personaname"]
-        embed.url = f'https://steamcommunity.com/profiles/{steam_id}'
-
-        base = Image.open('assets/images/profile-base.png')
-        base = base.convert('RGB')
-
-        _new = base.copy()
-
-        new = ImageDraw.Draw(_new)
-
-        mm_rank = list(bot.mm_ranks.keys())[list(bot.mm_ranks.values()).index(stats["rank"])]
-
-        mm_rank_image = Image.open(f'assets/images/ranks/matchmaking/{mm_rank}.png')
-        _new.paste(mm_rank_image, (85, 165))
-
-        response = requests.get(f'{steam_user["avatarfull"]}')
-        im = Image.open(BytesIO(response.content))
-        im = im.convert("RGBA")
-        im = im.resize((200, 200))
-        big_size = (im.size[0] * 3, im.size[1] * 3)
-        mask = Image.new('L', big_size, 0)
-        draw = ImageDraw.Draw(mask)
-        draw.ellipse((0, 0) + big_size, fill=255)
-        mask = mask.resize(im.size, Image.ANTIALIAS)
-        im.putalpha(mask)
-
-        _new.paste(im, (836, 62), im)
-
-        country = get_country(member.id)
-
-        if country:
-            country_code = requests.get(f'https://restcountries.com/v3.1/name/{get_country(member.id)}') \
-                .json()[0]["cca2"].lower()
-
-            response = requests.get(f'https://flagcdn.com/32x24/{country_code}.png')
-            flag = Image.open(BytesIO(response.content))
-            flag = flag.convert("RGBA")
-
-            _new.paste(flag, (820, 370))
+        if not already_exists(member.id):
+            return await ctx.edit_original_message(content='This user hasn\'t linked their steam account yet '
+                                                           '(use `/link`).')
 
         else:
-            country = "Country not set."
+            steam_id = get_steam_id(member.id)
 
-        __country = f"""Country:       {country}"""
+            async with aiohttp.ClientSession() as session:
+                async with session.get(f'http://localhost:5000/stats/view/mm/{steam_id}') as stats:
+                    stats = await stats.json()
 
-        new.text((20, 20), 'Matchmaking Stats', font=ImageFont.truetype(bot.font, 45))
+                if "error" in stats.keys():
+                    return await ctx.edit_original_message(content='No matchmaking stats found for this user.')
 
-        _two = f"""ADR: {stats["adr"]}"""
+                # noinspection PyUnresolvedReferences
+                steam_user = self.steamAPI.ISteamUser.GetPlayerSummaries_v2(steamids=steam_id)["response"]["players"][0]
 
-        _three = f"""K/D: {stats["kpd"]}\nHLTV Rating: {stats["rating"]}\nClutch%: {stats["clutch"]}"""
+                embed = discord.Embed(colour=self.bot.embed_colour)
 
-        _four = f"""Best Weapon: {stats["best_weapon"]}"""
+                embed.title = steam_user["personaname"]
+                embed.url = f'https://steamcommunity.com/profiles/{steam_id}'
 
-        _five = f"""HS%: {stats["hs"]}\nWin Rate: {stats["win_rate"]}"""
+                base = Image.open('assets/images/profile-base.png')
+                base = base.convert('RGB')
 
-        _six = f"""Most Successful Map:\n{stats["most_successful_map"]}\nMost Played Map:\n{stats["most_played_map"]}"""
+                _new = base.copy()
 
-        __bio = get_bio(member.id)
+                new = ImageDraw.Draw(_new)
 
-        if __bio:
-            __bio = split_string(text=__bio, limit=35)
+                mm_rank = list(self.mm_ranks.keys())[list(self.mm_ranks.values()).index(stats["rank"])]
 
-            __bio = '\n'.join(__bio)
+                mm_rank_image = Image.open(f'assets/images/ranks/matchmaking/{mm_rank}.png')
+                _new.paste(mm_rank_image, (85, 165))
 
-        else:
-            __bio = "Bio not set."
+                async with session.get(f'{steam_user["avatarfull"]}') as res:
+                    im = Image.open(BytesIO(await res.read()))
 
-        new.text((460, 185), _two, font=ImageFont.truetype(bot.font, 30), fill=bot.stats_text_color)
-        new.text((55, 330), _three, font=ImageFont.truetype(bot.font, 30), fill=bot.stats_text_color)
-        new.text((380, 330), _four, font=ImageFont.truetype(bot.font, 30), fill=bot.stats_text_color)
-        new.text((55, 530), _five, font=ImageFont.truetype(bot.font, 30), fill=bot.stats_text_color)
-        new.text((390, 530), _six, font=ImageFont.truetype(bot.font, 25), fill=bot.stats_text_color)
-        new.text((720, 410), __bio, font=ImageFont.truetype("assets/fonts/DejaVuSans.ttf", 25),
-                 fill=bot.stats_text_color)
-        new.text((720, 365), __country, font=ImageFont.truetype(bot.font, 25), fill=bot.stats_text_color)
+                im = im.convert("RGBA")
+                im = im.resize((200, 200))
+                big_size = (im.size[0] * 3, im.size[1] * 3)
+                mask = Image.new('L', big_size, 0)
+                draw = ImageDraw.Draw(mask)
+                draw.ellipse((0, 0) + big_size, fill=255)
+                mask = mask.resize(im.size, Image.ANTIALIAS)
+                im.putalpha(mask)
 
-        file_name = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(10))
+                _new.paste(im, (836, 62), im)
 
-        buffer = BytesIO()
-        _new.save(buffer, format="PNG")
-        buffer.seek(0)
+                country = get_country(member.id)
 
-        file = discord.File(buffer, filename=f'{file_name}.png')
+                if country:
+                    async with session.get(f'https://restcountries.com/v3.1/name/{get_country(member.id)}') as res:
+                        res = await res.json()
+                        country_code = res[0]["cca2"].lower()
 
-        embed.set_image(url=f'attachment://{file_name}.png')
+                    async with session.get(f'https://flagcdn.com/32x24/{country_code}.png') as res:
+                        flag = Image.open(BytesIO(await res.read()))
 
-        embed.set_footer(text='Stats are updated every 12 hours.')
+                    flag = flag.convert("RGBA")
 
-        for role_id in bot.mm_rank_role_ids.values():
-            role = ctx.guild.get_role(role_id)
+                    _new.paste(flag, (820, 370))
 
-            if role in member.roles:
-                await member.remove_roles(role)
+                else:
+                    country = "Country not set."
 
-        rank_role = ctx.guild.get_role(bot.mm_rank_role_ids[stats["rank"]])
+                __country = f"""Country:       {country}"""
 
-        await member.add_roles(rank_role)
+                new.text((20, 20), 'Matchmaking Stats',
+                         font=ImageFont.truetype(self.title_font, 45),
+                         fill='#292929')
 
-        await ctx.edit_original_message(attachments=[file], embed=embed)
+                _two = f"""ADR: {stats["adr"]}"""
 
+                _three = f"""K/D: {stats["kpd"]}\nHLTV Rating: {stats["rating"]}\nClutch%: {stats["clutch"]}"""
 
-@app_commands.command(name='faceitstats',
-                      description='Shows the FaceIT statistics of the author / the mentioned user, if found.')
-async def _faceit_stats(ctx: discord.Interaction, member: discord.Member = None):
-    await ctx.response.defer(thinking=True)
+                _four = f"""Best Weapon: {stats["best_weapon"]}"""
 
-    if member is None:
-        member = ctx.user
+                _five = f"""HS%: {stats["hs"]}\nWin Rate: {stats["win_rate"]}"""
 
-    if not already_exists(member.id):
+                _six = f"""Most Successful Map:
+{stats["most_successful_map"]}
+Most Played Map:
+{stats["most_played_map"]}"""
 
-        return await ctx.edit_original_message(content='This user hasn\'t linked their steam account yet.')
+                __bio = get_bio(member.id)
 
-    else:
-        steam_id = get_steam_id(member.id)
+                if __bio:
+                    __bio = split_string(text=__bio, limit=35)
 
-        stats = requests.get(f'http://localhost:5000/stats/view/faceit/{steam_id}').json()
+                    __bio = '\n'.join(__bio)
 
-        if "error" in stats.keys():
-            return await ctx.edit_original_message(content='No FaceIT stats found for this user.')
+                else:
+                    __bio = "Bio not set."
 
-        # noinspection PyUnresolvedReferences
-        steam_user = bot.steamAPI.ISteamUser.GetPlayerSummaries_v2(steamids=steam_id)["response"]["players"][0]
+                new.text((460, 185), _two, font=ImageFont.truetype(self.font, 30), fill=self.stats_text_color)
+                new.text((55, 330), _three, font=ImageFont.truetype(self.font, 30), fill=self.stats_text_color)
+                new.text((380, 330), _four, font=ImageFont.truetype(self.font, 30), fill=self.stats_text_color)
+                new.text((55, 530), _five, font=ImageFont.truetype(self.font, 30), fill=self.stats_text_color)
+                new.text((390, 530), _six, font=ImageFont.truetype(self.font, 25), fill=self.stats_text_color)
+                new.text((720, 410), __bio, font=ImageFont.truetype(self.bio_font, 25), fill=self.stats_text_color)
+                new.text((720, 365), __country, font=ImageFont.truetype(self.font, 25), fill=self.stats_text_color)
 
-        embed = discord.Embed(colour=bot.embed_colour)
+                file_name = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(10))
 
-        embed.title = steam_user["personaname"]
-        embed.url = f'https://steamcommunity.com/profiles/{steam_id}'
+                buffer = BytesIO()
+                _new.save(buffer, format="PNG")
+                buffer.seek(0)
 
-        base = Image.open('assets/images/profile-base.png')
-        base = base.convert('RGB')
+                file = discord.File(buffer, filename=f'{file_name}.png')
 
-        _new = base.copy()
+                embed.set_image(url=f'attachment://{file_name}.png')
 
-        new = ImageDraw.Draw(_new)
+                embed.set_footer(text=f'Stats are updated every {self.update_frequency} hours.')
 
-        faceit_rank_image = Image.open(f'assets/images/ranks/faceit/{stats["rank"]}.png')
+                for role_id in self.mm_rank_role_ids.values():
+                    role = ctx.guild.get_role(role_id)
 
-        faceit_rank_image = faceit_rank_image.convert("RGBA")
-        big_size = (faceit_rank_image.size[0] * 3, faceit_rank_image.size[1] * 3)
-        mask = Image.new('L', big_size, 0)
-        draw = ImageDraw.Draw(mask)
-        draw.ellipse((0, 0) + big_size, fill=255)
-        mask = mask.resize(faceit_rank_image.size, Image.ANTIALIAS)
-        faceit_rank_image.putalpha(mask)
+                    if role in member.roles:
+                        await member.remove_roles(role)
 
-        _new.paste(faceit_rank_image, (135, 165), faceit_rank_image)
+                rank_role = ctx.guild.get_role(self.mm_rank_role_ids[stats["rank"]])
 
-        response = requests.get(f'{steam_user["avatarfull"]}')
-        im = Image.open(BytesIO(response.content))
-        im = im.convert("RGBA")
-        im = im.resize((200, 200))
-        big_size = (im.size[0] * 3, im.size[1] * 3)
-        mask = Image.new('L', big_size, 0)
-        draw = ImageDraw.Draw(mask)
-        draw.ellipse((0, 0) + big_size, fill=255)
-        mask = mask.resize(im.size, Image.ANTIALIAS)
-        im.putalpha(mask)
+                await member.add_roles(rank_role)
 
-        _new.paste(im, (836, 62), im)
+                await ctx.edit_original_message(attachments=[file], embed=embed)
 
-        country = get_country(member.id)
+    @app_commands.command(name='faceitstats',
+                          description='Shows the FaceIT statistics of the author / the mentioned user, if found.')
+    @app_commands.guilds(whitelist)
+    async def _faceit_stats(self, ctx: discord.Interaction, member: discord.Member = None):
+        await ctx.response.defer(thinking=True)
 
-        if country:
-            country_code = requests.get(f'https://restcountries.com/v3.1/name/{get_country(member.id)}') \
-                .json()[0]["cca2"].lower()
+        if member is None:
+            member = ctx.user
 
-            response = requests.get(f'https://flagcdn.com/32x24/{country_code}.png')
-            flag = Image.open(BytesIO(response.content))
-            flag = flag.convert("RGBA")
+        if not already_exists(member.id):
 
-            _new.paste(flag, (820, 370))
-
-        else:
-            country = "Country not set."
-
-        __country = f"""Country:       {country}"""
-
-        new.text((20, 20), 'FaceIT Stats', font=ImageFont.truetype(bot.font, 45))
-
-        _two = f"""ELO: {stats["elo"]}"""
-
-        _three = f"""K/D: {stats["kpd"]}\n\nHLTV Rating: {stats["rating"]}"""
-
-        _four = f"""Matches: {stats["matches"]}"""
-
-        _five = f"""HS%: {stats["hs"]}\n\nWin Rate: {stats["win_rate"]}"""
-
-        _six = f"""Most Successful Map:\n{stats["most_successful_map"]}\nMost Played Map:\n{stats["most_played_map"]}"""
-
-        __bio = get_bio(member.id)
-
-        if __bio:
-            __bio = split_string(text=__bio, limit=35)
-
-            __bio = '\n'.join(__bio)
+            return await ctx.edit_original_message(content='This user hasn\'t linked their steam account yet '
+                                                           '(use `/link`).')
 
         else:
-            __bio = "Bio not set."
+            steam_id = get_steam_id(member.id)
 
-        new.text((450, 185), _two, font=ImageFont.truetype(bot.font, 30), fill=bot.stats_text_color)
-        new.text((55, 340), _three, font=ImageFont.truetype(bot.font, 30), fill=bot.stats_text_color)
-        new.text((420, 375), _four, font=ImageFont.truetype(bot.font, 30), fill=bot.stats_text_color)
-        new.text((55, 540), _five, font=ImageFont.truetype(bot.font, 30), fill=bot.stats_text_color)
-        new.text((390, 530), _six, font=ImageFont.truetype(bot.font, 25), fill=bot.stats_text_color)
-        new.text((720, 410), __bio, font=ImageFont.truetype("assets/fonts/DejaVuSans.ttf", 25),
-                 fill=bot.stats_text_color)
-        new.text((720, 365), __country, font=ImageFont.truetype(bot.font, 25), fill=bot.stats_text_color)
+            async with aiohttp.ClientSession() as session:
+                async with session.get(f'http://localhost:5000/stats/view/faceit/{steam_id}') as stats:
+                    stats = await stats.json()
 
-        file_name = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(10))
+                if "error" in stats.keys():
+                    return await ctx.edit_original_message(content='No FaceIT stats found for this user.')
 
-        buffer = BytesIO()
-        _new.save(buffer, format="PNG")
-        buffer.seek(0)
+                # noinspection PyUnresolvedReferences
+                steam_user = self.steamAPI.ISteamUser.GetPlayerSummaries_v2(steamids=steam_id)["response"]["players"][0]
 
-        file = discord.File(buffer, filename=f'{file_name}.png')
+                embed = discord.Embed(colour=self.bot.embed_colour)
 
-        embed.set_image(url=f'attachment://{file_name}.png')
+                embed.title = steam_user["personaname"]
+                embed.url = f'https://steamcommunity.com/profiles/{steam_id}'
 
-        embed.set_footer(text='Stats are updated every 12 hours.')
+                base = Image.open('assets/images/profile-base.png')
+                base = base.convert('RGB')
 
-        for role_id in bot.faceit_rank_role_ids.values():
-            role = ctx.guild.get_role(role_id)
+                _new = base.copy()
 
-            if role in member.roles:
-                await member.remove_roles(role)
+                new = ImageDraw.Draw(_new)
 
-        rank_role = ctx.guild.get_role(bot.faceit_rank_role_ids[str(stats["rank"])])
+                faceit_rank_image = Image.open(f'assets/images/ranks/faceit/{stats["rank"]}.png')
 
-        await member.add_roles(rank_role)
+                faceit_rank_image = faceit_rank_image.convert("RGBA")
+                big_size = (faceit_rank_image.size[0] * 3, faceit_rank_image.size[1] * 3)
+                mask = Image.new('L', big_size, 0)
+                draw = ImageDraw.Draw(mask)
+                draw.ellipse((0, 0) + big_size, fill=255)
+                mask = mask.resize(faceit_rank_image.size, Image.ANTIALIAS)
+                faceit_rank_image.putalpha(mask)
 
-        await ctx.edit_original_message(attachments=[file], embed=embed)
+                _new.paste(faceit_rank_image, (135, 165), faceit_rank_image)
+
+                async with session.get(f'{steam_user["avatarfull"]}') as res:
+                    im = Image.open(BytesIO(await res.read()))
+                im = im.convert("RGBA")
+                im = im.resize((200, 200))
+                big_size = (im.size[0] * 3, im.size[1] * 3)
+                mask = Image.new('L', big_size, 0)
+                draw = ImageDraw.Draw(mask)
+                draw.ellipse((0, 0) + big_size, fill=255)
+                mask = mask.resize(im.size, Image.ANTIALIAS)
+                im.putalpha(mask)
+
+                _new.paste(im, (836, 62), im)
+
+                country = get_country(member.id)
+
+                if country:
+                    async with session.get(f'https://restcountries.com/v3.1/name/{get_country(member.id)}') as res:
+                        res = await res.json()
+                        country_code = res[0]["cca2"].lower()
+
+                    async with session.get(f'https://flagcdn.com/32x24/{country_code}.png') as res:
+                        flag = Image.open(BytesIO(await res.read()))
+
+                    flag = flag.convert("RGBA")
+
+                    _new.paste(flag, (820, 370))
+
+                else:
+                    country = "Country not set."
+
+                __country = f"""Country:       {country}"""
+
+                new.text((20, 20), 'FaceIT Stats',
+                         font=ImageFont.truetype(self.title_font, 45),
+                         fill='#292929')
+
+                _two = f"""ELO: {stats["elo"]}"""
+
+                _three = f"""K/D: {stats["kpd"]}\n\nHLTV Rating: {stats["rating"]}"""
+
+                _four = f"""Matches: {stats["matches"]}"""
+
+                _five = f"""HS%: {stats["hs"]}\n\nWin Rate: {stats["win_rate"]}"""
+
+                _six = f"""Most Successful Map:
+{stats["most_successful_map"]}
+Most Played Map:
+{stats["most_played_map"]}"""
+
+                __bio = get_bio(member.id)
+
+                if __bio:
+                    __bio = split_string(text=__bio, limit=35)
+
+                    __bio = '\n'.join(__bio)
+
+                else:
+                    __bio = "Bio not set."
+
+                new.text((450, 185), _two, font=ImageFont.truetype(self.font, 30), fill=self.stats_text_color)
+                new.text((55, 340), _three, font=ImageFont.truetype(self.font, 30), fill=self.stats_text_color)
+                new.text((420, 375), _four, font=ImageFont.truetype(self.font, 30), fill=self.stats_text_color)
+                new.text((55, 540), _five, font=ImageFont.truetype(self.font, 30), fill=self.stats_text_color)
+                new.text((390, 530), _six, font=ImageFont.truetype(self.font, 25), fill=self.stats_text_color)
+                new.text((720, 410), __bio, font=ImageFont.truetype(self.bio_font, 25), fill=self.stats_text_color)
+                new.text((720, 365), __country, font=ImageFont.truetype(self.font, 25), fill=self.stats_text_color)
+
+                file_name = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(10))
+
+                buffer = BytesIO()
+                _new.save(buffer, format="PNG")
+                buffer.seek(0)
+
+                file = discord.File(buffer, filename=f'{file_name}.png')
+
+                embed.set_image(url=f'attachment://{file_name}.png')
+
+                embed.set_footer(text=f'Stats are updated every {update_frequency} hours.')
+
+                for role_id in self.faceit_rank_role_ids.values():
+                    role = ctx.guild.get_role(role_id)
+
+                    if role in member.roles:
+                        await member.remove_roles(role)
+
+                rank_role = ctx.guild.get_role(self.faceit_rank_role_ids[str(stats["rank"])])
+
+                await member.add_roles(rank_role)
+
+                await ctx.edit_original_message(attachments=[file], embed=embed)
+
+    @app_commands.command(name='update',
+                          description='Updates the CSGO Matchmaking / FaceIT statistics of the author, if available.')
+    @app_commands.guilds(whitelist)
+    async def _update(self, ctx: discord.Interaction):
+        await ctx.response.defer(thinking=True)
+
+        if not already_exists(ctx.user.id):
+
+            return await ctx.edit_original_message(content='You have not linked your steam account yet.')
+
+        else:
+            steam_id = get_steam_id(ctx.user.id)
+
+            async with aiohttp.ClientSession as session:
+                async with session.get(f'http://localhost:5000/stats/update/mm/{steam_id}'):
+                    pass
+
+                async with session.get(f'http://localhost:5000/stats/update/faceit/{steam_id}'):
+                    pass
+
+                async with session.get(f'http://localhost:5000/stats/view/mm/{steam_id}') as stats:
+                    stats = await stats.json()
+
+                if "error" not in stats.keys():
+                    for role_id in self.mm_rank_role_ids.values():
+                        role = ctx.guild.get_role(role_id)
+
+                        if role in ctx.user.roles:
+                            await ctx.user.remove_roles(role)
+
+                    rank_role = ctx.guild.get_role(self.mm_rank_role_ids[stats["rank"]])
+
+                    await ctx.user.add_roles(rank_role)
+
+                async with session.get(f'http://localhost:5000/stats/view/faceit/{steam_id}') as stats:
+                    stats = await stats.json()
+
+                if "error" not in stats.keys():
+                    for role_id in self.faceit_rank_role_ids.values():
+                        role = ctx.guild.get_role(role_id)
+
+                        if role in ctx.user.roles:
+                            await ctx.user.remove_roles(role)
+
+                    rank_role = ctx.guild.get_role(self.faceit_rank_role_ids[str(stats["rank"])])
+
+                    await ctx.user.add_roles(rank_role)
+
+                # noinspection PyUnresolvedReferences
+                steam_user = self.steamAPI.ISteamUser.GetPlayerSummaries_v2(steamids=steam_id)["response"]["players"][0]
+
+                if "loccountrycode" in steam_user.keys():
+                    async with session.get(f'https://restcountries.com/v3.1/alpha/{steam_user["loccountrycode"]}') \
+                            as res:
+                        res = await res.json()
+
+                    update_country(ctx.user.id, res[0]["name"]["common"])
+
+                    region = res[0]["region"]
+
+                    if region == "Americas":
+                        region = res[0]["subregion"]
+
+                    update_region(ctx.user.id, region)
+
+                    for role_id in self.region_role_ids.values():
+                        role = ctx.guild.get_role(role_id)
+
+                        if role in ctx.user.roles:
+                            await ctx.user.remove_roles(role)
+
+                    region_role_id = self.region_role_ids[region]
+
+                    region_role = ctx.guild.get_role(region_role_id)
+
+                    await ctx.user.add_roles(region_role)
+
+            # noinspection PyUnresolvedReferences
+            game_stats = self.steamAPI.ISteamUserStats.GetUserStatsForGame_v2(steamid=steam_id, appid=730)
+
+            game_stats = game_stats["playerstats"]["stats"]
+
+            hours = 0
+
+            for game_stat in game_stats:
+                if game_stat["name"] == 'total_time_played':
+                    hours = round(game_stat["value"] / 3600)
+
+            update_hours(ctx.user.id, hours)
+
+            return await ctx.edit_original_message(content='Your profile has been updated.')
 
 
-@app_commands.command(name='update',
-                      description='Updates the CSGO Matchmaking / FaceIT statistics of the author, if available.')
-async def _update(ctx: discord.Interaction):
-    await ctx.response.defer(thinking=True)
-
-    if not already_exists(ctx.user.id):
-
-        return await ctx.edit_original_message(content='You have not linked your steam account yet.')
-
-    else:
-
-        requests.get(f'http://localhost:5000/stats/update/mm/{get_steam_id(ctx.user.id)}',
-                     timeout=30)
-
-        requests.get(f'http://localhost:5000/stats/update/faceit/{get_steam_id(ctx.user.id)}',
-                     timeout=30)
-
-        return await ctx.edit_original_message(content='The stats have been updated.')
+async def setup(bot):
+    await bot.add_cog(Statistics(bot))

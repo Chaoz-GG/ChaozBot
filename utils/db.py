@@ -231,3 +231,93 @@ def update_country(user_id: int, country: str):
 
     cursor.close()
     db.close()
+
+
+def get_region(user_id: int):
+    db = mysql.connector.connect(host=db_host, port=db_port, user=db_user,
+                                 passwd=db_password, database=db_name)
+    cursor = db.cursor(buffered=True)
+
+    # noinspection SqlDialectInspection, SqlNoDataSourceInspection
+    cursor.execute('select REGION from users where USER_ID = %s;', (user_id, ))
+
+    res = cursor.fetchone()[0]
+
+    cursor.close()
+    db.close()
+
+    return res
+
+
+def update_region(user_id: int, region: str):
+    db = mysql.connector.connect(host=db_host, port=db_port, user=db_user,
+                                 passwd=db_password, database=db_name)
+    cursor = db.cursor(buffered=True)
+
+    # noinspection SqlDialectInspection,SqlNoDataSourceInspection
+    cursor.execute('update users SET REGION = %s where USER_ID = %s;', (region, user_id))
+    db.commit()
+
+    cursor.close()
+    db.close()
+
+
+def get_hours(user_id: int):
+    db = mysql.connector.connect(host=db_host, port=db_port, user=db_user,
+                                 passwd=db_password, database=db_name)
+    cursor = db.cursor(buffered=True)
+
+    # noinspection SqlDialectInspection, SqlNoDataSourceInspection
+    cursor.execute('select HOURS from users where USER_ID = %s;', (user_id, ))
+
+    res = cursor.fetchone()[0]
+
+    cursor.close()
+    db.close()
+
+    return res
+
+
+def update_hours(user_id: int, hours: int):
+    db = mysql.connector.connect(host=db_host, port=db_port, user=db_user,
+                                 passwd=db_password, database=db_name)
+    cursor = db.cursor(buffered=True)
+
+    # noinspection SqlDialectInspection,SqlNoDataSourceInspection
+    cursor.execute('update users SET HOURS = %s where USER_ID = %s;', (hours, user_id))
+    db.commit()
+
+    cursor.close()
+    db.close()
+
+
+def sort_lb(region: str, mm_rank: str = None, faceit_rank: int = None):
+    db = mysql.connector.connect(host=db_host, port=db_port, user=db_user,
+                                 passwd=db_password, database=db_name)
+    cursor = db.cursor(buffered=True)
+
+    if mm_rank:
+        # noinspection SqlDialectInspection,SqlNoDataSourceInspection
+        cursor.execute('select users.STEAM_ID, users.USER_ID, mm_stats.RANK from mm_stats, users '
+                       'where users.REGION = %s and mm_stats.RANK = %s and mm_stats.STEAM_ID = users.STEAM_ID '
+                       'order by KPD desc;', (region, mm_rank))
+
+    elif faceit_rank:
+        # noinspection SqlDialectInspection,SqlNoDataSourceInspection
+        cursor.execute('select users.STEAM_ID, users.USER_ID, faceit_stats.RANK from faceit_stats, users '
+                       'where users.REGION = %s and faceit_stats.RANK = %s and faceit_stats.STEAM_ID = users.STEAM_ID '
+                       'order by KPD desc;', (region, faceit_rank))
+
+    else:
+        # noinspection SqlDialectInspection,SqlNoDataSourceInspection
+        cursor.execute('select users.STEAM_ID, users.USER_ID, mm_stats.RANK, faceit_stats.RANK from mm_stats, '
+                       'faceit_stats, users where users.REGION = %s and mm_stats.STEAM_ID = users.STEAM_ID '
+                       'and faceit_stats.STEAM_ID = users.STEAM_ID order by  mm_stats.KPD, faceit_stats.KPD desc;',
+                       (region, ))
+
+    res = cursor.fetchall()
+
+    cursor.close()
+    db.close()
+
+    return res

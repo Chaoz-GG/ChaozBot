@@ -1,40 +1,47 @@
 #!/usr/bin/python3
 
-import discord
-from discord.ext import commands
-
 import math
+import json
 from datetime import datetime
 
-from utils.tools import reply_message, edit_message
+import discord
+from discord import app_commands
+from discord.ext import commands
+
+
+with open('config.json') as json_file:
+    data = json.load(json_file)
+    whitelist = data['whitelist']
 
 
 class General(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.command(name='ping')
-    @commands.cooldown(1, 3, commands.BucketType.user)
-    async def _ping(self, ctx):
+    @app_commands.command(name='ping', description='Returns the API and bot latency.')
+    @app_commands.guilds(whitelist)
+    async def _ping(self, ctx: discord.Interaction):
+        await ctx.response.defer(thinking=True)
+
         embed = discord.Embed(colour=self.bot.embed_colour)
         embed.description = '**Pong!**'
 
-        ms = self.bot.latency*1000
+        ms = self.bot.latency * 1000
 
         embed.add_field(name='API latency (Heartbeat)', value=f'`{int(ms)} ms`')
 
         t1 = datetime.utcnow().strftime("%f")
 
-        msg = await reply_message(ctx=ctx, embed=embed, emoji=self.bot.emoji1)
+        await ctx.edit_original_message(embed=embed)
 
         t2 = datetime.utcnow().strftime("%f")
 
-        diff = int(math.fabs((int(t2) - int(t1))/1000))
+        diff = int(math.fabs((int(t2) - int(t1)) / 1000))
 
         embed.add_field(name='Bot latency (Round-trip)', value=f'`{diff} ms`')
 
-        await edit_message(msg=msg, embed=embed)
+        await ctx.edit_original_message(embed=embed)
 
 
-def setup(bot):
-    bot.add_cog(General(bot))
+async def setup(bot):
+    await bot.add_cog(General(bot))

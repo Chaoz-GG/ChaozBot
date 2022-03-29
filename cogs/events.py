@@ -1,10 +1,9 @@
-from discord.ext import commands, tasks
+import discord
+from discord.ext import commands
 
 import json
 
-import requests
-
-from utils.db import get_steam_ids, get_steam_id, already_exists, remove_user
+from utils.db import get_steam_id, already_exists, remove_user
 
 
 class Events(commands.Cog):
@@ -15,12 +14,9 @@ class Events(commands.Cog):
             data = json.load(json_file)
             self.whitelist = data['whitelist']
 
-    # Auto-update stats
-    @tasks.loop(hours=12)
-    async def _update_stats(self):
-        for steam_id in get_steam_ids():
-            requests.get(f'http://localhost:5000/stats/update/mm/{steam_id}')
-            requests.get(f'http://localhost:5000/stats/update/faceit/{steam_id}')
+    @commands.Cog.listener()
+    async def on_ready(self):
+        await self.bot.tree.sync(guild=discord.Object(id=self.whitelist))
 
     # Leave unexpected servers
     @commands.Cog.listener()
@@ -37,5 +33,5 @@ class Events(commands.Cog):
             remove_user(member.id, steam_id)
 
 
-def setup(bot):
-    bot.add_cog(Events(bot))
+async def setup(bot):
+    await bot.add_cog(Events(bot))
