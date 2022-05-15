@@ -14,6 +14,7 @@ with open('config.json') as _json_file:
     whitelist = _data['whitelist']
     update_frequency = _data['update_frequency']
     steam_key = _data['steam_key']
+    sudo_role_ids = _data['sudo_role_ids']
 
 
 class LeaderBoard(commands.Cog):
@@ -50,9 +51,9 @@ class LeaderBoard(commands.Cog):
 
     # Auto-update leaderboard
     @tasks.loop(hours=update_frequency)
-    async def _update_lb(self):
+    async def _update_lb(self, channel_id=None):
         guild = self.bot.get_guild(whitelist)
-        channel = guild.get_channel(self.lfg_channel_id)
+        channel = guild.get_channel(self.lfg_channel_id if not channel_id else channel_id)
 
         for msg in await channel.pins():
             await msg.unpin()
@@ -182,6 +183,31 @@ class LeaderBoard(commands.Cog):
                 embed.description += f' - MM: `{lb_data[2]}`, FaceIT: `{lb_data[3]}`'
 
         await ctx.edit_original_message(embed=embed)
+
+    @app_commands.command(name='publish', description='Publish the region-wise leaderboards.')
+    @app_commands.guilds(whitelist)
+    async def _publish(self, ctx: discord.Interaction, channel: discord.TextChannel = None):
+        await ctx.response.defer(thinking=True)
+
+        sudo_roles = []
+
+        for sudo_role_id in sudo_role_ids:
+            sudo_roles.append(ctx.guild.get_role(sudo_role_id))
+
+        for sudo_role in sudo_roles:
+            if sudo_role in ctx.user.roles:
+                break
+
+        else:
+            return await ctx.edit_original_message(content='This is an administrator only command.')
+
+        if not channel:
+            await self._update_lb()
+
+        else:
+            await self._update_lb(channel.id)
+
+        await ctx.edit_original_message(content='The leaderboards have been published.')
 
     @commands.Cog.listener()
     async def on_ready(self):

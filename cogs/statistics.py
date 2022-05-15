@@ -19,6 +19,7 @@ with open('config.json') as json_file:
     whitelist = data['whitelist']
     update_frequency = data['update_frequency']
     steam_key = data['steam_key']
+    sudo_role_ids = data['sudo_role_ids']
     mm_rank_role_ids = data['mm_rank_role_ids']
     faceit_rank_role_ids = data['faceit_rank_role_ids']
     region_role_ids = data['region_role_ids']
@@ -341,19 +342,33 @@ Most Played Map:
                 await ctx.edit_original_message(attachments=[file], embed=embed)
 
     @app_commands.command(name='update',
-                          description='Updates the CSGO Matchmaking / FaceIT statistics of the author, if available.')
+                          description='Updates the CSGO Matchmaking / FaceIT statistics of the user, if available.')
     @app_commands.guilds(whitelist)
-    async def _update(self, ctx: discord.Interaction):
+    async def _update(self, ctx: discord.Interaction, member: discord.Member = None):
         await ctx.response.defer(thinking=True)
 
-        if not already_exists(ctx.user.id):
+        sudo_roles = []
 
-            return await ctx.edit_original_message(content='You have not linked your steam account yet.')
+        for sudo_role_id in sudo_role_ids:
+            sudo_roles.append(ctx.guild.get_role(sudo_role_id))
+
+        for sudo_role in sudo_roles:
+            if sudo_role in ctx.user.roles:
+                break
 
         else:
-            steam_id = get_steam_id(ctx.user.id)
+            return await ctx.edit_original_message(content='This is an administrator only command.')
+            
+        if not member:
+            member = ctx.user
 
-            async with aiohttp.ClientSession as session:
+        if not already_exists(member.id):
+            return await ctx.edit_original_message(content=f'`{member}` have not linked their steam account yet.')
+
+        else:
+            steam_id = get_steam_id(member.id)
+
+            async with aiohttp.ClientSession() as session:
                 async with session.get(f'http://localhost:5000/stats/update/mm/{steam_id}'):
                     pass
 
@@ -367,12 +382,12 @@ Most Played Map:
                     for role_id in self.mm_rank_role_ids.values():
                         role = ctx.guild.get_role(role_id)
 
-                        if role in ctx.user.roles:
-                            await ctx.user.remove_roles(role)
+                        if role in member.roles:
+                            await member.remove_roles(role)
 
                     rank_role = ctx.guild.get_role(self.mm_rank_role_ids[stats["rank"]])
 
-                    await ctx.user.add_roles(rank_role)
+                    await member.add_roles(rank_role)
 
                 async with session.get(f'http://localhost:5000/stats/view/faceit/{steam_id}') as stats:
                     stats = await stats.json()
@@ -381,12 +396,12 @@ Most Played Map:
                     for role_id in self.faceit_rank_role_ids.values():
                         role = ctx.guild.get_role(role_id)
 
-                        if role in ctx.user.roles:
-                            await ctx.user.remove_roles(role)
+                        if role in member.roles:
+                            await member.remove_roles(role)
 
                     rank_role = ctx.guild.get_role(self.faceit_rank_role_ids[str(stats["rank"])])
 
-                    await ctx.user.add_roles(rank_role)
+                    await member.add_roles(rank_role)
 
                 # noinspection PyUnresolvedReferences
                 steam_user = self.steamAPI.ISteamUser.GetPlayerSummaries_v2(steamids=steam_id)["response"]["players"][0]
@@ -396,26 +411,26 @@ Most Played Map:
                             as res:
                         res = await res.json()
 
-                    update_country(ctx.user.id, res[0]["name"]["common"])
+                    update_country(member.id, res[0]["name"]["common"])
 
                     region = res[0]["region"]
 
                     if region == "Americas":
                         region = res[0]["subregion"]
 
-                    update_region(ctx.user.id, region)
+                    update_region(member.id, region)
 
                     for role_id in self.region_role_ids.values():
                         role = ctx.guild.get_role(role_id)
 
-                        if role in ctx.user.roles:
-                            await ctx.user.remove_roles(role)
+                        if role in member.roles:
+                            await member.remove_roles(role)
 
                     region_role_id = self.region_role_ids[region]
 
                     region_role = ctx.guild.get_role(region_role_id)
 
-                    await ctx.user.add_roles(region_role)
+                    await member.add_roles(region_role)
 
             # noinspection PyUnresolvedReferences
             game_stats = self.steamAPI.ISteamUserStats.GetUserStatsForGame_v2(steamid=steam_id, appid=730)
@@ -428,9 +443,9 @@ Most Played Map:
                 if game_stat["name"] == 'total_time_played':
                     hours = round(game_stat["value"] / 3600)
 
-            update_hours(ctx.user.id, hours)
+            update_hours(member.id, hours)
 
-            return await ctx.edit_original_message(content='Your profile has been updated.')
+            return await ctx.edit_original_message(content='The profile and statistics has been updated.')
 
 
 async def setup(bot):

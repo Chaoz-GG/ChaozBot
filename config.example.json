@@ -15,6 +15,8 @@
 
   "steam_key"             : "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
 
+  "sudo_role_ids"         : [903505291583295505],
+
   "mm_rank_role_ids"      : {
     "Unranked": 123,
     "Silver 1": 946498367159165019,
@@ -62,5 +64,8 @@
   "lfg_channel_id": 950774972232650792,
   "lft_channel_id": 946527526455480381,
   "lfp_channel_id": 946527783121747999,
-  "lfc_channel_id": 950761080131575908
+  "lfc_channel_id": 950761080131575908,
+
+  "create_team_channel_id": 944142974969864202,
+  "join_team_channel_id": 944142971224330290
 }
