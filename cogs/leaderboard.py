@@ -55,8 +55,12 @@ class LeaderBoard(commands.Cog):
         guild = self.bot.get_guild(whitelist)
         channel = guild.get_channel(self.lfg_channel_id if not channel_id else channel_id)
 
-        for msg in await channel.pins():
-            await msg.unpin()
+        with open('leaderboard.json') as f:
+            try:
+                lb_msgs = json.load(f)
+
+            except json.decoder.JSONDecodeError:
+                lb_msgs = {}
 
         msgs = []
 
@@ -89,9 +93,18 @@ class LeaderBoard(commands.Cog):
                                      f'(https://steamcommunity.com/profiles/{lb_data[0]}) ' \
                                      f'({guild_user.mention}) - MM: `{lb_data[2]}`, FaceIT: `{lb_data[3]}`'
 
-            msg = await channel.send(embed=embed)
+                if _region not in lb_msgs.keys():
+                    msg = await channel.send(embed=embed)
 
-            msgs.append(msg)
+                    with open('leaderboard.json', 'w') as f:
+                        lb_msgs[_region] = msg.id
+                        json.dump(lb_msgs, f)
+
+                    msgs.append(msg)
+
+                else:
+                    msg = await channel.fetch_message(lb_msgs[_region])
+                    await msg.edit(embed=embed)
 
         for msg in msgs:
             await msg.pin()
