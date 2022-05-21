@@ -226,6 +226,11 @@ class LeaderBoard(commands.Cog):
     async def on_ready(self):
         self._update_lb.start()
 
+    # Update leaderboards on member leaving
+    @commands.Cog.listener()
+    async def on_member_remove(self, member):
+        await self._update_lb()
+
 
 async def setup(bot):
     await bot.add_cog(LeaderBoard(bot))
