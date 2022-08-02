@@ -24,7 +24,7 @@ class ChaozBot(commands.Bot):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.log = logging.getLogger('Sn1F3rt')
+        self.log = logging.getLogger('ChaozBot')
 
     async def setup_hook(self) -> None:
         self.add_view(Create())

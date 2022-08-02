@@ -787,7 +787,7 @@ This tool helps you in creating a team.
 To create a new team, press the \u2795 button.
 """
 
-        embed.set_thumbnail(url='https://bot.chaoz.gg/assets/chaoz_logo.png')
+        embed.set_thumbnail(url=chaoz_logo_url)
 
         view = Create()
 

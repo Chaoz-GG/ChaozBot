@@ -135,6 +135,8 @@ dmypy.json
 # Custom
 cogs/core.py
 cogs/evaluate.py
+data/leaderboard.json
+data/teams.json
 config.json
 test.py
 log.txt
