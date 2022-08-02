@@ -11,7 +11,7 @@ import aiohttp
 from steam.webapi import WebAPI
 from PIL import Image, ImageFont, ImageDraw
 
-from utils.tools import split_string
+from utils.tools import split_string, log_message
 from utils.db import get_steam_id, already_exists, get_bio, get_country, update_country, update_region, update_hours
 
 with open('config.json') as json_file:
@@ -23,6 +23,13 @@ with open('config.json') as json_file:
     mm_rank_role_ids = data['mm_rank_role_ids']
     faceit_rank_role_ids = data['faceit_rank_role_ids']
     region_role_ids = data['region_role_ids']
+    chaoz_logo_url = data['chaoz_logo_url']
+    steam_logo_url = data['steam_logo_url']
+    faceit_logo_url = data['faceit_logo_url']
+
+with open('data/messages.json') as _json_file:
+    messages = json.load(_json_file)
+    messages = messages["statistics"]
 
 
 class Statistics(commands.Cog):
@@ -70,12 +77,13 @@ class Statistics(commands.Cog):
     async def _mm_stats(self, ctx: discord.Interaction, member: discord.Member = None):
         await ctx.response.defer(thinking=True)
 
+        await log_message(ctx, f'`{ctx.user}` has used the `{ctx.command.name}` command.')
+
         if member is None:
             member = ctx.user
 
         if not already_exists(member.id):
-            return await ctx.edit_original_message(content='This user hasn\'t linked their steam account yet '
-                                                           '(use `/link`).')
+            return await ctx.edit_original_message(content=messages["profile_not_linked"])
 
         else:
             steam_id = get_steam_id(member.id)
@@ -85,7 +93,7 @@ class Statistics(commands.Cog):
                     stats = await stats.json()
 
                 if "error" in stats.keys():
-                    return await ctx.edit_original_message(content='No matchmaking stats found for this user.')
+                    return await ctx.edit_original_message(content=messages["mm_stats_not_found"])
 
                 # noinspection PyUnresolvedReferences
                 steam_user = self.steamAPI.ISteamUser.GetPlayerSummaries_v2(steamids=steam_id)["response"]["players"][0]
@@ -94,6 +102,8 @@ class Statistics(commands.Cog):
 
                 embed.title = steam_user["personaname"]
                 embed.url = f'https://steamcommunity.com/profiles/{steam_id}'
+
+                embed.set_author(name='Chaoz Gaming', icon_url=chaoz_logo_url)
 
                 base = Image.open('assets/images/profile-base.png')
                 base = base.convert('RGB')
@@ -185,7 +195,8 @@ Most Played Map:
 
                 embed.set_image(url=f'attachment://{file_name}.png')
 
-                embed.set_footer(text=f'Stats are updated every {self.update_frequency} hours.')
+                embed.set_footer(text=f'Matchmaking | Stats are updated every {self.update_frequency} hours.',
+                                 icon_url=steam_logo_url)
 
                 for role_id in self.mm_rank_role_ids.values():
                     role = ctx.guild.get_role(role_id)
@@ -205,13 +216,14 @@ Most Played Map:
     async def _faceit_stats(self, ctx: discord.Interaction, member: discord.Member = None):
         await ctx.response.defer(thinking=True)
 
+        await log_message(ctx, f'`{ctx.user}` has used the `{ctx.command.name}` command.')
+
         if member is None:
             member = ctx.user
 
         if not already_exists(member.id):
 
-            return await ctx.edit_original_message(content='This user hasn\'t linked their steam account yet '
-                                                           '(use `/link`).')
+            return await ctx.edit_original_message(content=messages["profile_not_linked"])
 
         else:
             steam_id = get_steam_id(member.id)
@@ -221,7 +233,7 @@ Most Played Map:
                     stats = await stats.json()
 
                 if "error" in stats.keys():
-                    return await ctx.edit_original_message(content='No FaceIT stats found for this user.')
+                    return await ctx.edit_original_message(content=messages["faceit_stats_not_found"])
 
                 # noinspection PyUnresolvedReferences
                 steam_user = self.steamAPI.ISteamUser.GetPlayerSummaries_v2(steamids=steam_id)["response"]["players"][0]
@@ -230,6 +242,8 @@ Most Played Map:
 
                 embed.title = steam_user["personaname"]
                 embed.url = f'https://steamcommunity.com/profiles/{steam_id}'
+
+                embed.set_author(name='Chaoz Gaming', icon_url=chaoz_logo_url)
 
                 base = Image.open('assets/images/profile-base.png')
                 base = base.convert('RGB')
@@ -327,7 +341,8 @@ Most Played Map:
 
                 embed.set_image(url=f'attachment://{file_name}.png')
 
-                embed.set_footer(text=f'Stats are updated every {update_frequency} hours.')
+                embed.set_footer(text=f'FaceIT | Stats are updated every {update_frequency} hours.',
+                                 icon_url=faceit_logo_url)
 
                 for role_id in self.faceit_rank_role_ids.values():
                     role = ctx.guild.get_role(role_id)
@@ -347,6 +362,8 @@ Most Played Map:
     async def _update(self, ctx: discord.Interaction, member: discord.Member = None):
         await ctx.response.defer(thinking=True)
 
+        await log_message(ctx, f'`{ctx.user}` has used the `{ctx.command.name}` command.')
+
         sudo_roles = []
 
         for sudo_role_id in sudo_role_ids:
@@ -357,13 +374,13 @@ Most Played Map:
                 break
 
         else:
-            return await ctx.edit_original_message(content='This is an administrator only command.')
-            
+            return await ctx.edit_original_message(content=messages["admin_only"])
+
         if not member:
             member = ctx.user
 
         if not already_exists(member.id):
-            return await ctx.edit_original_message(content=f'`{member}` have not linked their steam account yet.')
+            return await ctx.edit_original_message(content=messages["profile_not_linked"])
 
         else:
             steam_id = get_steam_id(member.id)
@@ -445,7 +462,9 @@ Most Played Map:
 
             update_hours(member.id, hours)
 
-            return await ctx.edit_original_message(content='The profile and statistics has been updated.')
+            await log_message(ctx, f'{ctx.user} has requested a stats update for `{member}`.')
+
+            return await ctx.edit_original_message(content=messages["stats_updated"])
 
 
 async def setup(bot):

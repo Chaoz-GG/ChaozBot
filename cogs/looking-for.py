@@ -14,12 +14,17 @@ from discord import app_commands
 from discord.ext import commands
 
 from utils.db import already_exists, get_steam_id, get_country, get_bio, get_hours
-from utils.tools import split_string
+from utils.tools import split_string, log_message
 
 with open('config.json') as _json_file:
     _data = json.load(_json_file)
     whitelist = _data['whitelist']
     steam_key = _data['steam_key']
+    chaoz_logo_url = _data['chaoz_logo_url']
+
+with open('data/messages.json') as _json_file:
+    messages = json.load(_json_file)
+    messages = messages["looking-for"]
 
 
 class LFG(ui.Modal, title='LFG Form'):
@@ -38,10 +43,10 @@ class LFG(ui.Modal, title='LFG Form'):
             _age = int(self.age.value)
 
         except ValueError:
-            await ctx.edit_original_message(content='The age entered is invalid.')
+            await ctx.edit_original_message(content=messages["invalid_age"])
 
         if self.game_type.value.lower() not in ['mm', 'faceit', 'wingman', '1v1', 'dz']:
-            await ctx.edit_original_message(content='The game type entered is invalid.')
+            await ctx.edit_original_message(content=messages["invalid_game_type"])
 
 
 class LFP(ui.Modal, title='LFP Form'):
@@ -80,7 +85,7 @@ class LFT(ui.Modal, title='LFT Form'):
             _age = int(self.age.value)
 
         except ValueError:
-            await ctx.edit_original_message(content='The age entered is invalid.')
+            await ctx.edit_original_message(content=messages["invalid_age"])
 
 
 class LFC(ui.Modal, title='LFC Form'):
@@ -112,10 +117,7 @@ class LookingFor(commands.Cog):
 
         with open('config.json') as json_file:
             data = json.load(json_file)
-            self.lfg_channel_id = data['lfg_channel_id']
-            self.lfp_channel_id = data['lfp_channel_id']
-            self.lft_channel_id = data['lft_channel_id']
-            self.lfc_channel_id = data['lfc_channel_id']
+            self.lf_channel_id = data['lf_channel_id']
 
         self.mm_ranks = {
             0: 'Unranked',
@@ -147,9 +149,10 @@ class LookingFor(commands.Cog):
     @app_commands.command(name='lfg', description='Send a looking-for-game advertisement.')
     @app_commands.guilds(whitelist)
     async def _lfg(self, ctx: discord.Interaction):
+        await log_message(ctx, f'`{ctx.user}` has used the `{ctx.command.name}` command.')
+
         if not already_exists(ctx.user.id):
-            return await ctx.edit_original_message(content='This user hasn\'t linked their steam account yet '
-                                                           '(use `/link`).')
+            return await ctx.edit_original_message(content=messages["profile_not_linked"])
 
         modal = LFG()
         await ctx.response.send_modal(modal)
@@ -158,6 +161,8 @@ class LookingFor(commands.Cog):
         ctx = modal.interaction
 
         embed = discord.Embed(colour=self.bot.embed_colour)
+
+        embed.set_thumbnail(url=chaoz_logo_url)
 
         if modal.game_type.value.lower() == '1v1':
             embed.title = 'Looking for Game (1v1)'
@@ -182,14 +187,14 @@ class LookingFor(commands.Cog):
                     stats = await stats.json()
 
                     if "error" in stats.keys():
-                        return await ctx.edit_original_message(content='No matchmaking stats found for this user.')
+                        return await ctx.edit_original_message(content=messages["mm_stats_not_found"])
 
             else:
                 async with session.get(f'http://localhost:5000/stats/view/faceit/{steam_id}') as stats:
                     stats = await stats.json()
 
                     if "error" in stats.keys():
-                        return await ctx.edit_original_message(content='No FaceIT stats found for this user.')
+                        return await ctx.edit_original_message(content=messages["faceit_stats_not_found"])
 
         # noinspection PyUnresolvedReferences
         steam_user = self.steamAPI.ISteamUser.GetPlayerSummaries_v2(steamids=steam_id)["response"]["players"][0]
@@ -386,7 +391,7 @@ Most Played Map:
 
             embed.set_image(url=f'attachment://{file_name}.png')
 
-        channel = ctx.guild.get_channel(self.lfg_channel_id)
+        channel = ctx.guild.get_channel(self.lf_channel_id)
 
         view = discord.ui.View()
         view.add_item(
@@ -396,11 +401,13 @@ Most Played Map:
 
         await channel.send(embed=embed, file=file, view=view)
 
-        await ctx.edit_original_message(content=f'Your advertisement has been posted in {channel.mention}.')
+        await ctx.edit_original_message(content=messages["ad_posted"].format(channel.mention))
 
     @app_commands.command(name='lfp', description='Send a looking-for-player advertisement.')
     @app_commands.guilds(whitelist)
     async def _lfp(self, ctx: discord.Interaction):
+        await log_message(ctx, f'`{ctx.user}` has used the `{ctx.command.name}` command.')
+
         modal = LFP()
         await ctx.response.send_modal(modal)
         await modal.wait()
@@ -408,6 +415,8 @@ Most Played Map:
         ctx = modal.interaction
 
         embed = discord.Embed(colour=self.bot.embed_colour)
+
+        embed.set_thumbnail(url=chaoz_logo_url)
 
         embed.title = 'Looking for Players'
         embed.description = f'**{modal.name.value}** is looking for players!'
@@ -417,18 +426,19 @@ Most Played Map:
         embed.add_field(name='Offers', value=modal.offers.value, inline=False)
         embed.add_field(name='Contact', value=modal.contact.value)
 
-        channel = ctx.guild.get_channel(self.lfp_channel_id)
+        channel = ctx.guild.get_channel(self.lf_channel_id)
 
         await channel.send(embed=embed)
 
-        await ctx.edit_original_message(content=f'Your advertisement has been posted in {channel.mention}.')
+        await ctx.edit_original_message(content=messages["ad_posted"].format(channel.mention))
 
     @app_commands.command(name='lft', description='Send a looking-for-team advertisement.')
     @app_commands.guilds(whitelist)
     async def _lft(self, ctx: discord.Interaction):
+        await log_message(ctx, f'`{ctx.user}` has used the `{ctx.command.name}` command.')
+
         if not already_exists(ctx.user.id):
-            return await ctx.edit_original_message(content='This user hasn\'t linked their steam account yet '
-                                                           '(use `/link`).')
+            return await ctx.edit_original_message(content=messages["profile_not_linked"])
 
         modal = LFT()
         await ctx.response.send_modal(modal)
@@ -444,6 +454,8 @@ Most Played Map:
         hours = get_hours(ctx.user.id)
 
         embed = discord.Embed(colour=self.bot.embed_colour)
+
+        embed.set_thumbnail(url=chaoz_logo_url)
 
         embed.title = 'Looking for Team'
         embed.description = f'**[{steam_user["personaname"]}](https://steamcommunity.com/profiles/{steam_id})** ' \
@@ -468,15 +480,17 @@ Most Played Map:
         embed.add_field(name='Hours', value=hours if hours else 'Private')
         embed.add_field(name='About me', value=modal.about_me.value, inline=False)
 
-        channel = ctx.guild.get_channel(self.lft_channel_id)
+        channel = ctx.guild.get_channel(self.lf_channel_id)
 
         await channel.send(embed=embed)
 
-        await ctx.edit_original_message(content=f'Your advertisement has been posted in {channel.mention}.')
+        await ctx.edit_original_message(content=messages["ad_posted"].format(channel.mention))
 
     @app_commands.command(name='lfc', description='Send a looking-for-coach advertisement.')
     @app_commands.guilds(whitelist)
     async def _lfc(self, ctx: discord.Interaction):
+        await log_message(ctx, f'`{ctx.user}` has used the `{ctx.command.name}` command.')
+
         modal = LFC()
         await ctx.response.send_modal(modal)
         await modal.wait()
@@ -484,6 +498,8 @@ Most Played Map:
         ctx = modal.interaction
 
         embed = discord.Embed(colour=self.bot.embed_colour)
+
+        embed.set_thumbnail(url=chaoz_logo_url)
 
         embed.title = 'Looking for Coach'
         embed.description = f'**{modal.name.value}** are looking for a coach!'
@@ -496,11 +512,11 @@ Most Played Map:
         embed.add_field(name='Offers', value=modal.offers.value, inline=False)
         embed.add_field(name='Expectations', value=modal.expectations.value, inline=False)
 
-        channel = ctx.guild.get_channel(self.lfc_channel_id)
+        channel = ctx.guild.get_channel(self.lf_channel_id)
 
         await channel.send(embed=embed)
 
-        await ctx.edit_original_message(content=f'Your advertisement has been posted in {channel.mention}.')
+        await ctx.edit_original_message(content=messages["ad_posted"].format(channel.mention))
 
 
 async def setup(bot):

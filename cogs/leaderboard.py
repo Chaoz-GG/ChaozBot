@@ -7,6 +7,7 @@ from discord import app_commands
 from discord.ext import commands, tasks
 
 from utils.db import sort_lb
+from utils.tools import log_message
 
 
 with open('config.json') as _json_file:
@@ -15,6 +16,11 @@ with open('config.json') as _json_file:
     update_frequency = _data['update_frequency']
     steam_key = _data['steam_key']
     sudo_role_ids = _data['sudo_role_ids']
+    chaoz_logo_url = _data['chaoz_logo_url']
+
+with open('data/messages.json') as _json_file:
+    messages = json.load(_json_file)
+    messages = messages["leaderboard"]
 
 
 class LeaderBoard(commands.Cog):
@@ -23,7 +29,7 @@ class LeaderBoard(commands.Cog):
 
         with open('config.json') as json_file:
             data = json.load(json_file)
-            self.lfg_channel_id = data['lfg_channel_id']
+            self.lb_channel_id = data['lb_channel_id']
 
         self.steamAPI = WebAPI(steam_key)
 
@@ -53,14 +59,18 @@ class LeaderBoard(commands.Cog):
     @tasks.loop(hours=update_frequency)
     async def _update_lb(self, channel_id=None):
         guild = self.bot.get_guild(whitelist)
-        channel = guild.get_channel(self.lfg_channel_id if not channel_id else channel_id)
+        channel = guild.get_channel(channel_id or self.lb_channel_id)
 
-        with open('leaderboard.json') as f:
-            try:
-                lb_msgs = json.load(f)
+        if not channel_id:
+            with open('data/leaderboard.json') as f:
+                try:
+                    lb_msgs = json.load(f)
 
-            except json.decoder.JSONDecodeError:
-                lb_msgs = {}
+                except json.decoder.JSONDecodeError:
+                    lb_msgs = {}
+
+        else:
+            lb_msgs = {}
 
         msgs = []
 
@@ -78,6 +88,8 @@ class LeaderBoard(commands.Cog):
 
             embed = discord.Embed(colour=self.bot.embed_colour)
 
+            embed.set_thumbnail(url=chaoz_logo_url)
+
             embed.title = f'{_region} LeaderBoard'
             embed.description = ''
 
@@ -88,28 +100,29 @@ class LeaderBoard(commands.Cog):
 
                 guild_user = guild.get_member(lb_data[1])
 
-                embed.description += f'\n`{index + 1}` ' \
+                embed.description += f'\n`{index + 1}.` ' \
                                      f'[{steam_user["personaname"]}]' \
                                      f'(https://steamcommunity.com/profiles/{lb_data[0]}) ' \
                                      f'({guild_user.mention}) - MM: `{lb_data[2]}`, FaceIT: `{lb_data[3]}`'
 
-                if _region not in lb_msgs.keys():
-                    msg = await channel.send(embed=embed)
+            if _region not in lb_msgs.keys():
+                msg = await channel.send(embed=embed)
 
-                    with open('leaderboard.json', 'w') as f:
+                if not channel_id:
+                    with open('data/leaderboard.json', 'w') as f:
                         lb_msgs[_region] = msg.id
                         json.dump(lb_msgs, f)
 
-                    msgs.append(msg)
+                msgs.append(msg)
 
-                else:
-                    msg = await channel.fetch_message(lb_msgs[_region])
-                    await msg.edit(embed=embed)
+            else:
+                msg = await channel.fetch_message(lb_msgs[_region])
+                await msg.edit(embed=embed)
 
         for msg in msgs:
             await msg.pin()
 
-    @app_commands.command(name='lb', description='Show region-wise leaderboard with additional filters!')
+    @app_commands.command(name='leaderboard', description='Show region-wise leaderboard with additional filters!')
     @app_commands.choices(region=[
         app_commands.Choice(name='North America', value=1),
         app_commands.Choice(name='South America', value=2),
@@ -152,8 +165,10 @@ class LeaderBoard(commands.Cog):
         app_commands.Choice(name='Level 10', value=10)
     ])
     @app_commands.guilds(whitelist)
-    async def _lb(self, ctx: discord.Interaction, region: app_commands.Choice[int],
-                  mm_rank: app_commands.Choice[int] = None, faceit_rank: app_commands.Choice[int] = None):
+    async def _leaderboard(self, ctx: discord.Interaction, region: app_commands.Choice[int],
+                           mm_rank: app_commands.Choice[int] = None, faceit_rank: app_commands.Choice[int] = None):
+        await log_message(ctx, f'`{ctx.user}` has used the `{ctx.command.name}` command.')
+
         await ctx.response.defer(thinking=True)
 
         if mm_rank:
@@ -172,9 +187,11 @@ class LeaderBoard(commands.Cog):
             lb = sort_lb(region.name)
 
         if not lb:
-            return await ctx.edit_original_message(content=f'No stats available to display for `{region.name}` region.')
+            return await ctx.edit_original_message(content=messages["region_stats_unavailable"].format(region.name))
 
         embed = discord.Embed(colour=self.bot.embed_colour)
+
+        embed.set_thumbnail(url=chaoz_logo_url)
 
         embed.title = f'{region.name} LeaderBoard'
         embed.description = ''
@@ -202,6 +219,8 @@ class LeaderBoard(commands.Cog):
     async def _publish(self, ctx: discord.Interaction, channel: discord.TextChannel = None):
         await ctx.response.defer(thinking=True)
 
+        await log_message(ctx, f'`{ctx.user}` has used the `{ctx.command.name}` command.')
+
         sudo_roles = []
 
         for sudo_role_id in sudo_role_ids:
@@ -212,7 +231,7 @@ class LeaderBoard(commands.Cog):
                 break
 
         else:
-            return await ctx.edit_original_message(content='This is an administrator only command.')
+            return await ctx.edit_original_message(content=messages["admin_only"])
 
         if not channel:
             await self._update_lb()
@@ -220,13 +239,14 @@ class LeaderBoard(commands.Cog):
         else:
             await self._update_lb(channel.id)
 
-        await ctx.edit_original_message(content='The leaderboards have been published.')
+        await ctx.edit_original_message(content=messages["leaderboards_published"])
 
     @commands.Cog.listener()
     async def on_ready(self):
         self._update_lb.start()
 
     # Update leaderboards on member leaving
+    # noinspection PyUnusedLocal
     @commands.Cog.listener()
     async def on_member_remove(self, member):
         await self._update_lb()

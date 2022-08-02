@@ -1,0 +1,56 @@
+{
+    "csgo": [
+        "Counter-Strike: Global Offensive",
+        5,
+        "Counter-Strike (also marketed as Half-Life: Counter-Strike) is a multiplayer first-person shooter initially created by Minh Le and Jess Cliffe as a mod for Half-Life. By the fifth beta, Valve Software started actively participating in the development and ultimately bought the rights to the game and offered the original developers jobs at the company which both of them accepted.\n\nAfter about a year in Beta stages, the first full release of the mod was published on November 9, 2000 and the game was also available at retailers in North America shortly thereafter, on November 14, 2000.\n\nSince the creation of the franchise, various sequels and spinoffs have been created, such as Counter-Strike: Condition Zero, Counter-Strike: Source, and the latest in the series, Counter-Strike: Global Offensive.",
+        "https://www.chaoz.gg/games/counter-strike-global-offensive/"
+    ],
+    "dota2": [
+        "Dota 2",
+        5
+    ],
+    "valorant": [
+        "Valorant",
+        5
+    ],
+    "pubg": [
+        "PlayerUnknown's Battlegrounds",
+        3
+    ],
+    "rust": [
+        "Rust",
+        4
+    ],
+    "fortnite": [
+        "Fortnite",
+        4
+    ],
+    "cod": [
+        "Call of Duty",
+        4
+    ],
+    "apex": [
+        "Apex Legends",
+        4
+    ],
+    "wow": [
+        "World of Warcraft",
+        -1
+    ],
+    "overwatch": [
+        "Overwatch",
+        5
+    ],
+    "r6": [
+        "Rainbow Six Siege",
+        5
+    ],
+    "lol": [
+        "League of Legends",
+        5
+    ],
+    "other": [
+        "Other Game",
+        5
+    ]
+}

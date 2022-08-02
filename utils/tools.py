@@ -2,12 +2,13 @@
 
 import discord
 
+import json
 import random
 import string
 
 
-def make_list_embed(fields):
-    embed = discord.Embed()
+def make_list_embed(fields, colour):
+    embed = discord.Embed(colour=colour)
     for key, value in fields.items():
         embed.add_field(name=key, value=value, inline=True)
     return embed
@@ -25,104 +26,14 @@ def parse_cooldown(cooldown):
     return minutes, seconds
 
 
-async def send_message(ctx=None, channel=None, content=None, embed=None, emoji=None):
-    if emoji:
-        try:
-            await ctx.message.add_reaction(emoji)
-        except (discord.Forbidden, discord.errors.Forbidden):
-            pass
+async def log_message(ctx: discord.Interaction, message: str):
+    with open('config.json') as json_file:
+        data = json.load(json_file)
+        log_channel_id = data['log_channel_id']
 
-    if ctx and not channel:
-        channel = ctx
+    log_channel = ctx.guild.get_channel(log_channel_id)
 
-    else:
-        pass
-
-    if content and not embed:
-        try:
-            return await channel.send(content)
-
-        except (discord.Forbidden, discord.errors.Forbidden):
-            pass
-
-    elif embed and content:
-        try:
-            return await channel.send(content, embed=embed)
-
-        except (discord.Forbidden, discord.errors.Forbidden):
-            pass
-
-    elif not content and embed:
-        try:
-            return await channel.send(embed=embed)
-
-        except (discord.Forbidden, discord.errors.Forbidden):
-            pass
-
-
-async def reply_message(ctx, content=None, embed=None, emoji=None):
-    if emoji:
-        try:
-            if isinstance(ctx, discord.Message):
-                await ctx.add_reaction(emoji)
-
-            else:
-                await ctx.message.add_reaction(emoji)
-
-        except (discord.Forbidden, discord.errors.Forbidden):
-            pass
-
-    if content and not embed:
-        try:
-            return await ctx.reply(content, mention_author=False)
-
-        except (discord.Forbidden, discord.errors.Forbidden):
-            pass
-
-    elif embed and not content:
-        try:
-            return await ctx.reply(embed=embed, mention_author=False)
-
-        except (discord.Forbidden, discord.errors.Forbidden):
-            pass
-
-
-async def edit_message(msg, content=None, embed=None):
-    if content and not embed:
-        try:
-            return await msg.edit(content)
-
-        except (discord.Forbidden, discord.errors.Forbidden):
-            pass
-
-    elif embed and not content:
-        try:
-            return await msg.edit(embed=embed)
-
-        except (discord.Forbidden, discord.errors.Forbidden):
-            pass
-
-
-async def reply_file(ctx, f, embed=None, emoji=None):
-    if emoji:
-        try:
-            await ctx.message.add_reaction(emoji)
-        except (discord.Forbidden, discord.errors.Forbidden):
-            pass
-
-    if not embed:
-        try:
-            return await ctx.reply(file=f, mention_author=False)
-
-        except (discord.Forbidden, discord.errors.Forbidden):
-            pass
-
-    else:
-        try:
-            return await ctx.reply(embed=embed, file=f, mention_author=False)
-
-        except (discord.Forbidden, discord.errors.Forbidden):
-            pass
+    return await log_channel.send(message)
 
 
 def pad(line, limit):

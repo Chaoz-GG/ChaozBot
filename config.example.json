@@ -1,71 +1,83 @@
 {
-  "bot_token"             : "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
-  "prefix"                : "$",
 
-  "whitelist"             : 903505291583295498,
+  "bot_token"             : "OTk5MjExMjQ3ODg5Mjg1MTIw.G_s1oc.x41Mn0kbbq4IoHHbSMhOeCY7No3eV7wNSd4k_Y",
 
-  "log_channel_id"        : 950400174407168090,
+  "whitelist"             : 999197856835575810,
+
+  "log_channel_id"        : 999201975642099774,
   "update_frequency"      : 12,
 
-  "db_name"               : "XXXXX",
-  "db_user"               : "XXXXX",
-  "db_password"           : "XXXXX",
+  "db_name"               : "ChaozGG",
+  "db_user"               : "sn1f3rt",
+  "db_password"           : "pass@1234",
   "db_host"               : "localhost",
   "db_port"               : 3306,
 
-  "steam_key"             : "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "sftp_host"             : "chaoz.gg",
+  "sftp_port"             : 69,
+  "sftp_username"         : "botchaoz",
+  "sftp_pvt_key"          : "assets/keys/id_rsa",
+  "sftp_pvt_key_password" : "YeJh8{7nm$~G",
 
-  "sudo_role_ids"         : [903505291583295505],
+  "steam_key"             : "935207DD0FD9361222FCCEE703B1330A",
+
+  "sudo_role_ids"         : [999200643099144313],
 
   "mm_rank_role_ids"      : {
-    "Unranked": 123,
-    "Silver 1": 946498367159165019,
-    "Silver 2": 946498418740711475,
-    "Silver 3": 946498538664255530,
-    "Silver 4": 946498565197422593,
-    "Silver Elite": 946498590191276152,
-    "Silver Elite Master": 946498625524101120,
-    "Gold Nova 1": 946498657920905256,
-    "Gold Nova 2": 946498703982723093,
-    "Gold Nova 3": 946498857951461416,
-    "Gold Nova Master": 946498894441873460,
-    "Master Guardian 1": 946498916902371409,
-    "Master Guardian 2": 946498968278421534,
-    "Master Guardian Elite": 946499004886286338,
-    "Distinguished Master Guardian": 946499053422800996,
-    "Legendary Eagle": 946499087392469112,
-    "Legendary Eagle Master": 946499119151742976,
-    "Supreme Master First Class": 946499160713101332,
-    "The Global Elite": 946499197295792179
+    "Unranked": 999200790147252274,
+    "Silver 1": 999200835085021185,
+    "Silver 2": 999200861110677564,
+    "Silver 3": 999200883533422632,
+    "Silver 4": 999200906497228811,
+    "Silver Elite": 999200929213595680,
+    "Silver Elite Master": 999200984565809252,
+    "Gold Nova 1": 999201037653114890,
+    "Gold Nova 2": 999201067428495480,
+    "Gold Nova 3": 999201089905762404,
+    "Gold Nova Master": 999201126496866346,
+    "Master Guardian 1": 999201161439629462,
+    "Master Guardian 2": 999201180905381958,
+    "Master Guardian Elite": 999201240913285200,
+    "Distinguished Master Guardian": 999201276418080889,
+    "Legendary Eagle": 999201296345219192,
+    "Legendary Eagle Master": 999201363634438174,
+    "Supreme Master First Class": 999201415681560636,
+    "The Global Elite": 999201440276938752
   },
 
-  "faceit_rank_role_ids"  : {
-    "1": 950861727531167804,
-    "2": 950862032775807016,
-    "3": 950862160332980245,
-    "4": 950862274241900574,
-    "5": 950862389912408065,
-    "6": 950862506358882304,
-    "7": 950862544858390559,
-    "8": 950862705416351814,
-    "9": 950862811561623562,
-    "10": 950862978863988807
+  "faceit_rank_role_ids": {
+    "1": 999201478638059550,
+    "2": 999201515992514611,
+    "3": 999201544312475698,
+    "4": 999201570153566228,
+    "5": 999201597705961582,
+    "6": 999201633273663528,
+    "7": 999201663845929041,
+    "8": 999201690421035049,
+    "9": 999201733102289067,
+    "10": 999201760784679022
   },
 
   "region_role_ids": {
-    "North America": 919229549257031690,
-    "South America": 919229870800764949,
-    "Europe": 919230192554238022,
-    "Asia": 919230480543539230,
-    "Africa": 951357535242321990,
-    "Oceania": 951357494431723530
+    "North America": 999200450932912190,
+    "South America": 999200493068877855,
+    "Europe": 999200537373323426,
+    "Africa": 999200564539834458,
+    "Asia": 999200591509209139,
+    "Oceania": 999200620152094780
   },
 
-  "lfg_channel_id": 950774972232650792,
-  "lft_channel_id": 946527526455480381,
-  "lfp_channel_id": 946527783121747999,
-  "lfc_channel_id": 950761080131575908,
+  "lf_channel_id": 999198327251931156,
+  "lb_channel_id": 999198353734783016,
 
-  "create_team_channel_id": 944142974969864202,
-  "join_team_channel_id": 944142971224330290
+  "create_team_channel_id": 999198194309283930,
+  "join_team_channel_id": 999198210088243251,
+
+  "team_max_games": 5,
+
+  "chaoz_logo_url": "https://bot.chaoz.gg/assets/chaoz_logo.png",
+  "steam_logo_url": "https://bot.chaoz.gg/assets/steam_logo.png",
+  "faceit_logo_url": "https://bot.chaoz.gg/assets/faceit_logo.png",
+  "team_default_logo_url": "https://bot.chaoz.gg/teams/default.png"
+
 }

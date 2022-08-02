@@ -2,6 +2,7 @@ import json
 from datetime import datetime
 
 import discord
+from discord import ui
 from discord import app_commands
 from discord.ext import commands
 
@@ -11,19 +12,81 @@ from steam.webapi import WebAPI
 from steam.steamid import SteamID
 from steam.enums import EPersonaState
 
-from utils.tools import make_list_embed, generate_token
+from utils.tools import make_list_embed, generate_token, log_message
 from utils.db import get_steam_ids, get_steam_id, already_exists, remove_user, has_generated_token, initiate_auth, \
-    cleanup_auth, get_token, add_user, update_bio, update_country, update_region, update_hours
+    cleanup_auth, get_token, add_user, update_birthday, update_timezone, update_bio, update_favorite_game, \
+    update_country, update_region, update_hours
 
 
 with open('config.json') as json_file:
     data = json.load(json_file)
     whitelist = data['whitelist']
-    log_channel_id = data['log_channel_id']
     steam_key = data['steam_key']
     mm_rank_role_ids = data['mm_rank_role_ids']
     faceit_rank_role_ids = data['faceit_rank_role_ids']
     region_role_ids = data['region_role_ids']
+    chaoz_logo_url = data['chaoz_logo_url']
+
+with open('data/messages.json') as _json_file:
+    messages = json.load(_json_file)
+    messages = messages["profile"]
+
+
+class ProfileForm(ui.Modal, title='Profile Update'):
+    options = list()
+
+    with open('data/games.json') as f:
+        games = json.load(f)
+
+    for abbr, game in games.items():
+        options.append(discord.SelectOption(label=game[0], value=abbr))
+
+    birthday = ui.TextInput(label='Birthday', placeholder='DD/MM/YYYY', max_length=10, required=False)
+    timezone = ui.TextInput(label='Timezone', placeholder='Check https://bot.chaoz.gg/timezones.json', required=False)
+    bio = ui.TextInput(label='Bio',
+                       placeholder='Enter your bio ...',
+                       style=discord.TextStyle.long,
+                       max_length=300,
+                       required=False)
+    favorite_game = ui.Select(placeholder='Choose your favorite game ...', options=options, max_values=1, min_values=0)
+
+    interaction: discord.Interaction = None
+
+    async def on_submit(self, ctx: discord.Interaction):
+        self.interaction = ctx
+
+        await ctx.response.defer(thinking=True)
+
+        with open('data/games.json') as f:
+            games = json.load(f)
+
+        if self.birthday.value:
+            birthday = self.birthday.value.replace('/', '')
+
+            try:
+                birthday = datetime.strptime(birthday, "%d%m%Y").date()
+
+            except ValueError:
+                return await ctx.edit_original_message(content=messages["birthday_invalid"])
+
+            update_birthday(ctx.user.id, birthday)
+
+        if self.timezone.value:
+            with open('data/timezones.json') as f:
+                timezones = json.load(f)
+
+            if self.timezone.value not in timezones:
+                return await ctx.edit_original_message(content=messages["timezone_invalid"])
+
+            update_timezone(ctx.user.id, self.timezone.value)
+
+        if self.bio.value:
+            update_bio(ctx.user.id, self.bio.value)
+
+        if self.favorite_game.values:
+            update_favorite_game(ctx.user.id, games[self.favorite_game.values[0]][0])
+
+        return await ctx.edit_original_message(content=messages["profile_updated"])
 
 
 class Profile(commands.Cog):
@@ -41,6 +104,8 @@ class Profile(commands.Cog):
     async def _steam(self, ctx: discord.Interaction, community_id: str):
         await ctx.response.defer(thinking=True)
 
+        await log_message(ctx, f'`{ctx.user}` has used the `{ctx.command.name}` command.')
+
         try:
             # noinspection PyUnresolvedReferences
             steam_id = SteamID.from_url('https://steamcommunity.com/id/{}'.format(community_id)
@@ -53,8 +118,7 @@ class Profile(commands.Cog):
             steam_user = self.steamAPI.ISteamUser.GetPlayerSummaries_v2(steamids=steam_id)["response"]["players"][0]
 
         except (requests.HTTPError, requests.exceptions.HTTPError, IndexError):
-            return await ctx.edit_original_message(content='No such user found! Make sure you are using a valid '
-                                                           'Steam community ID / URL.')
+            return await ctx.edit_original_message(content=messages["profile_not_found"])
 
         # noinspection PyUnresolvedReferences
         bans = self.steamAPI.ISteamUser.GetPlayerBans_v1(steamids=steam_id)["players"][0]
@@ -66,12 +130,13 @@ class Profile(commands.Cog):
             ban_info["Days Since Last VAC Ban"] = bans["DaysSinceLastBan"]
 
         if steam_user["communityvisibilitystate"] != 3:
-            embed = make_list_embed(ban_info)
+            embed = make_list_embed(ban_info, self.bot.embed_colour)
 
             embed.description = "This profile is private."
             embed.title = steam_user["personaname"]
             embed.colour = self.bot.embed_colour
             embed.url = steam_user["profileurl"]
+            embed.set_author(name='Chaoz Gaming', icon_url=chaoz_logo_url)
             embed.set_thumbnail(url=steam_user["avatarfull"])
 
             return await ctx.edit_original_message(embed=embed)
@@ -122,10 +187,11 @@ class Profile(commands.Cog):
             fields["Currently Playing"] = game_name
 
         fields.update(ban_info)
-        embed = make_list_embed(fields)
+        embed = make_list_embed(fields, self.bot.embed_colour)
         embed.title = steam_user["personaname"]
         embed.colour = self.bot.embed_colour
         embed.url = steam_user["profileurl"]
+        embed.set_author(name='Chaoz Gaming', icon_url=chaoz_logo_url)
         embed.set_thumbnail(url=steam_user["avatarfull"])
 
         await ctx.edit_original_message(embed=embed)
@@ -135,14 +201,10 @@ class Profile(commands.Cog):
     async def _link(self, ctx: discord.Interaction, community_id: str):
         await ctx.response.defer(thinking=True, ephemeral=True)
 
-        if not community_id:
-            return await ctx.edit_original_message(content='Please provide your Steam community ID/URL.')
+        await log_message(ctx, f'`{ctx.user}` has used the `{ctx.command.name}` command.')
 
         if already_exists(ctx.user.id):
-            return await ctx.edit_original_message(
-                content='You have already linked your Steam profile, if you would like '
-                        'to link a new Steam account, first use the `/unlink` command '
-                        'and then link the new account.')
+            return await ctx.edit_original_message(content=messages["profile_previously_linked"])
 
         try:
             # noinspection PyUnresolvedReferences
@@ -155,21 +217,19 @@ class Profile(commands.Cog):
             # noinspection PyUnresolvedReferences
             steam_user = self.steamAPI.ISteamUser.GetPlayerSummaries_v2(steamids=steam_id)["response"]["players"][0]
 
+            steam_id = SteamID(steam_user["steamid"])
+
             if int(steam_user["steamid"]) in get_steam_ids():
-                return await ctx.edit_original_message(content='This Steam account has already been linked '
-                                                               'by another user.')
+                return await ctx.edit_original_message(content=messages["profile_already_linked"])
 
         except (requests.HTTPError, IndexError):
-            message = 'No such user found ... make sure you are using a valid Steam community ID/URL!'
-            return await ctx.edit_original_message(content=message)
+            return await ctx.edit_original_message(content=messages["profile_not_found"])
 
         if not has_generated_token(ctx.user.id):
             _token = generate_token()
             initiate_auth(ctx.user.id, _token)
 
-            return await ctx.edit_original_message(
-                content=f'Please add `{_token}` to the end of your Steam profile name '
-                        'and run this command again.')
+            return await ctx.edit_original_message(content=messages["auth_add_token"].format(_token))
 
         else:
             _token = get_token(ctx.user.id)
@@ -177,6 +237,8 @@ class Profile(commands.Cog):
             if steam_user["personaname"].endswith(_token):
                 add_user(ctx.user.id, steam_user["steamid"])
                 cleanup_auth(ctx.user.id)
+
+                await ctx.edit_original_message(content=messages["profile_link_success"])
 
                 # noinspection PyUnresolvedReferences
                 game_stats = self.steamAPI.ISteamUserStats.GetUserStatsForGame_v2(steamid=steam_id, appid=730)
@@ -245,62 +307,46 @@ class Profile(commands.Cog):
 
                         await ctx.user.add_roles(region_role)
 
-                        await ctx.edit_original_message(content='Verification successful! You may now remove the token '
-                                                                'from your profile name on Steam.')
-
-                    else:
-                        await ctx.edit_original_message(content='Verification successful! You may now remove the token '
-                                                                'from your profile name on Steam.'
-                                                                '\n\n**NOTE:** You do not have a country listed '
-                                                                'on your Steam profile.'
-                                                                ' Please use the `/country` command to update it now.')
-
-                log_channel = ctx.guild.get_channel(log_channel_id)
-
-                return await log_channel.send(f'`{ctx.user}` have linked their Steam profile.')
+                return await log_message(ctx, f'`{ctx.user}` have linked their Steam profile.')
 
             else:
-                return await ctx.edit_original_message(
-                    content=f'Verification token (`{_token}`) could not be detected, '
-                            'please make sure the changes have been saved.')
+                return await ctx.edit_original_message(content=messages["auth_token_undetected"].format(_token))
 
     @app_commands.command(name='unlink', description='De-links your Steam profile from the bot.')
     @app_commands.guilds(whitelist)
     async def _unlink(self, ctx: discord.Interaction):
         await ctx.response.defer(thinking=True)
 
+        await log_message(ctx, f'`{ctx.user}` has used the `{ctx.command.name}` command.')
+
         if already_exists(ctx.user.id):
             steam_id = get_steam_id(ctx.user.id)
 
             remove_user(ctx.user.id, steam_id)
 
-            return await ctx.edit_original_message(content='Your Steam account has been unlinked.')
+            return await ctx.edit_original_message(content=messages["profile_unlink_success"])
 
         else:
-            return await ctx.edit_original_message(content='You have not linked your Steam account yet.')
+            return await ctx.edit_original_message(content=messages["profile_not_linked"])
 
-    @app_commands.command(name='bio', description='Sets your bio.')
+    @app_commands.command(name='profile', description='Update your profile.')
     @app_commands.guilds(whitelist)
-    async def _bio(self, ctx: discord.Interaction, *, bio: str):
-        await ctx.response.defer(thinking=True)
+    async def _profile(self, ctx: discord.Interaction):
+        await log_message(ctx, f'`{ctx.user}` has used the `{ctx.command.name}` command.')
 
-        if already_exists(ctx.user.id):
+        if not already_exists(ctx.user.id):
+            return await ctx.edit_original_message(content=messages["profile_not_linked"])
 
-            if len(bio) > 200:
-                return await ctx.edit_original_message(content='Bio cannot be more than 200 characters.')
-
-            update_bio(ctx.user.id, bio)
-
-            return await ctx.edit_original_message(content='Your bio has been updated.')
-
-        else:
-            return await ctx.edit_original_message(content='You have not linked your Steam account yet. '
-                                                           'Please do so first with the `/link` command.')
+        modal = ProfileForm()
+        await ctx.response.send_modal(modal)
+        await modal.wait()
 
     @app_commands.command(name='country', description='Sets your country.')
     @app_commands.guilds(whitelist)
     async def _country(self, ctx: discord.Interaction, *, country: str):
         await ctx.response.defer(thinking=True)
+
+        await log_message(ctx, f'`{ctx.user}` has used the `{ctx.command.name}` command.')
 
         if already_exists(ctx.user.id):
             steam_id = get_steam_id(ctx.user.id)
@@ -309,12 +355,10 @@ class Profile(commands.Cog):
             steam_user = self.steamAPI.ISteamUser.GetPlayerSummaries_v2(steamids=steam_id)["response"]["players"][0]
 
             if "loccountrycode" in steam_user.keys():
-                return await ctx.edit_original_message(
-                    content='Only users without a country listed on their Steam profile '
-                            'can use this command.')
+                return await ctx.edit_original_message(content=messages["country_link_warning"])
 
             if len(country) > 25:
-                return await ctx.edit_original_message(content='Country name cannot be more than 25 characters.')
+                return await ctx.edit_original_message(content=messages["country_too_long"])
 
             async with aiohttp.ClientSession() as session:
                 async with session.get(f'https://restcountries.com/v3.1/name/{country}') as res:
@@ -344,11 +388,10 @@ class Profile(commands.Cog):
 
             await ctx.user.add_roles(region_role)
 
-            return await ctx.edit_original_message(content='Your country has been updated.')
+            return await ctx.edit_original_message(content=messages["country_updated"])
 
         else:
-            return await ctx.edit_original_message(content='You have not linked your Steam account yet.'
-                                                           'Please do so first with the `/link` command.')
+            return await ctx.edit_original_message(content=messages["profile_not_linked"])
 
     @app_commands.command(name='inv',
                           description='Calculates the inventory value of the author / the mentioned user, if found.')
@@ -356,12 +399,13 @@ class Profile(commands.Cog):
     async def _inv(self, ctx: discord.Interaction, member: discord.Member = None):
         await ctx.response.defer(thinking=True)
 
+        await log_message(ctx, f'`{ctx.user}` has used the `{ctx.command.name}` command.')
+
         if member is None:
             member = ctx.user
 
         if not already_exists(member.id):
-            return await ctx.edit_original_message(content='This user hasn\'t linked their steam account yet. '
-                                                           '(use `/link`)')
+            return await ctx.edit_original_message(content=messages["profile_not_linked"])
 
         else:
             steam_id = get_steam_id(member.id)
@@ -371,12 +415,15 @@ class Profile(commands.Cog):
                     inv = await inv.json()
 
             if "error" in inv.keys():
-                return await ctx.edit_original_message(content='No inventory details found for this user.')
+                return await ctx.edit_original_message(content=messages["inventory_error"])
 
             # noinspection PyUnresolvedReferences
             steam_user = self.steamAPI.ISteamUser.GetPlayerSummaries_v2(steamids=steam_id)["response"]["players"][0]
 
             embed = discord.Embed(colour=self.bot.embed_colour)
+
+            embed.set_author(name='Chaoz Gaming', icon_url=chaoz_logo_url)
+            embed.set_thumbnail(url=steam_user["avatarfull"])
 
             embed.title = steam_user["personaname"]
             embed.url = f'https://steamcommunity.com/profiles/{steam_id}'

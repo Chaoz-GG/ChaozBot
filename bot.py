@@ -9,6 +9,8 @@ from datetime import datetime
 
 from utils.core import load_cogs
 
+from cogs.teams import Options, Create  # MemberRequest, SubstituteRequest
+
 with open('config.json') as json_file:
     data = json.load(json_file)
     token = data['bot_token']
@@ -22,7 +24,12 @@ class ChaozBot(commands.Bot):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.log = logging.getLogger('ChaozBot')
+        self.log = logging.getLogger('Sn1F3rt')
+
+    async def setup_hook(self) -> None:
+        self.add_view(Create())
+        self.add_view(Options())
+        # self.add_view(Request())
 
 
 intents = discord.Intents.all()
