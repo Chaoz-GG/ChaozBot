@@ -100,6 +100,9 @@ class LeaderBoard(commands.Cog):
 
                 guild_user = guild.get_member(lb_data[1])
 
+                if not guild_user:
+                    continue
+
                 embed.description += f'\n`{index + 1}.` ' \
                                      f'[{steam_user["personaname"]}]' \
                                      f'(https://steamcommunity.com/profiles/{lb_data[0]}) ' \
