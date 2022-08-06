@@ -544,11 +544,11 @@ class DeleteConfirm(discord.ui.View):
     async def _confirm(self, ctx: discord.Interaction, button: discord.ui.Button):
         await ctx.response.defer()
 
-        remove_team(self.team_id)
-
         await log_message(self.ctx, f'`{self.ctx.user}` has deleted the team `{get_team_by_id(self.team_id)["name"]}`.')
 
-        await self.ctx.edit_original_message(content=messages["action_created"], view=None)
+        remove_team(self.team_id)
+
+        await self.ctx.edit_original_message(content=messages["action_success"], view=None)
 
     # noinspection PyUnusedLocal
     @discord.ui.button(label='\u274C',
@@ -855,7 +855,18 @@ To create a new team, press the \u2795 button.
 
         await log_message(ctx, f'`{ctx.user}` has used the `{ctx.command.name}` command.')
 
-        teams = get_teams_by_captain_id(ctx.user.id)
+        sudo_roles = []
+
+        for sudo_role_id in sudo_role_ids:
+            sudo_roles.append(ctx.guild.get_role(sudo_role_id))
+
+        for sudo_role in sudo_roles:
+            if sudo_role in ctx.user.roles:
+                teams = get_teams_by_captain_id(-1)
+                break
+
+        else:
+            teams = get_teams_by_captain_id(ctx.user.id)
 
         if not teams:
             return await ctx.edit_original_message(content=messages["no_captain"])
@@ -901,7 +912,7 @@ To create a new team, press the \u2795 button.
         embed.title = team['name']
         embed.description = team['description']
 
-        embed.set_author(name='CHAOZ Gaming', icon_url='https://bot.chaoz.gg/assets/chaoz_logo.png')
+        embed.set_author(name='CHAOZ Gaming', icon_url=chaoz_logo_url)
 
         embed.set_thumbnail(url=f'https://bot.chaoz.gg/teams/{team_id}.png')
 
