@@ -31,23 +31,44 @@ def already_exists(user_id: int):
     return False
 
 
-def get_all_users(region: str = None, favorite_game: str = None):
+def get_all_users(region: str = None, favorite_game: str = None, age: int = None):
     db = mysql.connector.connect(host=db_host, port=db_port, user=db_user,
                                  passwd=db_password, database=db_name)
     cursor = db.cursor(buffered=True)
 
-    if region and favorite_game:
+    if region and favorite_game and age:
+        # noinspection SqlDialectInspection, SqlNoDataSourceInspection
+        cursor.execute('select USER_ID, STEAM_ID from users where REGION = %s and FAV_GAME = %s and '
+                       'TIMESTAMPDIFF(YEAR, BIRTHDAY, CURDATE()) = %s;',
+                       (region, favorite_game, age))
+
+    elif region and favorite_game and not age:
         # noinspection SqlDialectInspection, SqlNoDataSourceInspection
         cursor.execute('select USER_ID, STEAM_ID from users where REGION = %s and FAV_GAME = %s;',
                        (region, favorite_game))
 
-    elif region and not favorite_game:
+    elif favorite_game and age and not region:
+        # noinspection SqlDialectInspection, SqlNoDataSourceInspection
+        cursor.execute('select USER_ID, STEAM_ID from users where FAV_GAME = %s and '
+                       'TIMESTAMPDIFF(YEAR, BIRTHDAY, CURDATE()) = %s;', (favorite_game, age))
+
+    elif age and region and not favorite_game:
+        # noinspection SqlDialectInspection, SqlNoDataSourceInspection
+        cursor.execute('select USER_ID, STEAM_ID from users where TIMESTAMPDIFF(YEAR, BIRTHDAY, CURDATE()) = %s '
+                       'and REGION = %s;', (age, region))
+
+    elif region and not favorite_game and not age:
         # noinspection SqlDialectInspection, SqlNoDataSourceInspection
         cursor.execute('select USER_ID, STEAM_ID from users where REGION = %s;', (region,))
 
-    elif favorite_game and not region:
+    elif favorite_game and not region and not age:
         # noinspection SqlDialectInspection, SqlNoDataSourceInspection
         cursor.execute('select USER_ID, STEAM_ID from users where FAV_GAME = %s;', (favorite_game,))
+
+    elif age and not region and not favorite_game:
+        # noinspection SqlDialectInspection, SqlNoDataSourceInspection
+        cursor.execute('select USER_ID, STEAM_ID from users where TIMESTAMPDIFF(YEAR, BIRTHDAY, CURDATE()) = %s;',
+                       (age,))
 
     else:
         # noinspection SqlDialectInspection, SqlNoDataSourceInspection
@@ -57,6 +78,50 @@ def get_all_users(region: str = None, favorite_game: str = None):
 
     cursor.close()
     db.close()
+
+    return res
+
+
+def get_birthday_bois():
+    db = mysql.connector.connect(host=db_host, port=db_port, user=db_user,
+                                 passwd=db_password, database=db_name)
+    cursor = db.cursor(buffered=True)
+
+    # noinspection SqlDialectInspection, SqlNoDataSourceInspection
+    cursor.execute('select USER_ID from users WHERE DATE_FORMAT(BIRTHDAY,"%m-%d") = DATE_FORMAT(CURDATE(),"%m-%d");')
+
+    res = cursor.fetchall()
+
+    cursor.close()
+    db.close()
+
+    return res
+
+
+def get_user(user_id: int):
+    db = mysql.connector.connect(host=db_host, port=db_port, user=db_user,
+                                 passwd=db_password, database=db_name)
+    cursor = db.cursor(buffered=True)
+
+    # noinspection SqlDialectInspection, SqlNoDataSourceInspection
+    cursor.execute('select * from users where USER_ID = %s;', (user_id, ))
+
+    r = cursor.fetchone()
+
+    cursor.close()
+    db.close()
+
+    res = {
+        'user_id': r[0],
+        'steam_id': r[1],
+        'bio': r[2],
+        'country': r[3],
+        'region': r[4],
+        'hours': r[5],
+        'birthday': r[6],
+        'timezone': r[7],
+        'favorite_game': r[8]
+    }
 
     return res
 
@@ -651,7 +716,7 @@ def get_team_members(team_id: str):
 
     r = cursor.fetchone()
 
-    if not r:
+    if r == (None, None):
         return {}
 
     member_steam_ids = r[0].split('|')
@@ -675,7 +740,7 @@ def get_team_substitutes(team_id: str):
 
     r = cursor.fetchone()
 
-    if not r:
+    if r == (None, None):
         return {}
 
     substitutes_steam_ids = r[0].split('|')
