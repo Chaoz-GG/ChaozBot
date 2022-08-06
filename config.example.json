@@ -42,7 +42,7 @@
     "Legendary Eagle": 999201296345219192,
     "Legendary Eagle Master": 999201363634438174,
     "Supreme Master First Class": 999201415681560636,
-    "The Global Elite": 999201440276938752
+    "Global Elite": 999201440276938752
   },
 
   "faceit_rank_role_ids": {
@@ -72,6 +72,8 @@
 
   "create_team_channel_id": 999198194309283930,
   "join_team_channel_id": 999198210088243251,
+
+  "birthday_channel_id": 1004689214052507719,
 
   "team_max_games": 5,
 

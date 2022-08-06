@@ -544,7 +544,33 @@ class DeleteConfirm(discord.ui.View):
     async def _confirm(self, ctx: discord.Interaction, button: discord.ui.Button):
         await ctx.response.defer()
 
-        await log_message(self.ctx, f'`{self.ctx.user}` has deleted the team `{get_team_by_id(self.team_id)["name"]}`.')
+        team = get_team_by_id(self.team_id)
+
+        join_team_channel = ctx.guild.get_channel(join_team_channel_id)
+
+        try:
+            message = await join_team_channel.fetch_message(team['message_id'])
+            await message.delete()
+
+        except (discord.NotFound, discord.HTTPException):
+            pass
+
+        key = paramiko.RSAKey.from_private_key_file(sftp_pvt_key, password=sftp_pvt_key_password)
+
+        transport = paramiko.Transport((sftp_host, sftp_port))
+        transport.connect(username=sftp_username, pkey=key)
+        sftp = paramiko.SFTPClient.from_transport(transport)
+
+        try:
+            sftp.remove(f'public_html/teams/{self.team_id}.png')
+
+        except FileNotFoundError:
+            pass
+
+        sftp.close()
+        transport.close()
+
+        await log_message(self.ctx, f'`{self.ctx.user}` has deleted the team `{team["name"]}`.')
 
         remove_team(self.team_id)
 
@@ -808,7 +834,7 @@ To create a new team, press the \u2795 button.
     @app_commands.command(name='teamcp', description='Team Control Panel.')
     @app_commands.guilds(whitelist)
     async def _team_cp(self, ctx: discord.Interaction):
-        await ctx.response.defer(thinking=True)
+        await ctx.response.defer(thinking=True, ephemeral=True)
 
         await log_message(ctx, f'`{ctx.user}` has used the `{ctx.command.name}` command.')
 
@@ -851,7 +877,7 @@ To create a new team, press the \u2795 button.
     @app_commands.command(name='teamlogo', description='Upload team logo.')
     @app_commands.guilds(whitelist)
     async def _team_logo(self, ctx: discord.Interaction, logo: discord.Attachment):
-        await ctx.response.defer(thinking=True)
+        await ctx.response.defer(thinking=True, ephemeral=True)
 
         await log_message(ctx, f'`{ctx.user}` has used the `{ctx.command.name}` command.')
 

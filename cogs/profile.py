@@ -4,7 +4,7 @@ from datetime import datetime
 import discord
 from discord import ui
 from discord import app_commands
-from discord.ext import commands
+from discord.ext import commands, tasks
 
 import aiohttp
 import requests
@@ -15,7 +15,7 @@ from steam.enums import EPersonaState
 from utils.tools import make_list_embed, generate_token, log_message
 from utils.db import get_steam_ids, get_steam_id, already_exists, remove_user, has_generated_token, initiate_auth, \
     cleanup_auth, get_token, add_user, update_birthday, update_timezone, update_bio, update_favorite_game, \
-    update_country, update_region, update_hours
+    update_country, update_region, update_hours, get_birthday_bois, get_user
 
 
 with open('config.json') as json_file:
@@ -25,6 +25,7 @@ with open('config.json') as json_file:
     mm_rank_role_ids = data['mm_rank_role_ids']
     faceit_rank_role_ids = data['faceit_rank_role_ids']
     region_role_ids = data['region_role_ids']
+    birthday_channel_id = data['birthday_channel_id']
     chaoz_logo_url = data['chaoz_logo_url']
 
 with open('data/messages.json') as _json_file:
@@ -89,6 +90,36 @@ class ProfileForm(ui.Modal, title='Profile Update'):
         return await ctx.edit_original_message(content=messages["profile_updated"])
 
 
+class UnlinkConfirm(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=None)
+
+        self.ctx = None
+        self.member = None
+
+    # noinspection PyUnusedLocal
+    @discord.ui.button(label='\u2714',
+                       style=discord.ButtonStyle.green,
+                       custom_id='persistent_view:delete_confirm')
+    async def _confirm(self, ctx: discord.Interaction, button: discord.ui.Button):
+        await ctx.response.defer()
+
+        steam_id = get_steam_id(self.member.id)
+
+        remove_user(self.member.id, steam_id)
+
+        return await self.ctx.edit_original_message(content=messages["profile_unlink_success"], view=None)
+
+    # noinspection PyUnusedLocal
+    @discord.ui.button(label='\u274C',
+                       style=discord.ButtonStyle.red,
+                       custom_id='persistent_view:delete_cancel')
+    async def _cancel(self, ctx: discord.Interaction, button: discord.ui.Button):
+        await ctx.response.defer()
+
+        await self.ctx.edit_original_message(content=messages["action_cancel"], view=None)
+
+
 class Profile(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -99,26 +130,23 @@ class Profile(commands.Cog):
         self.faceit_rank_role_ids = faceit_rank_role_ids
         self.region_role_ids = region_role_ids
 
-    @app_commands.command(name='steam', description='Shows various information about the profile of a steam user.')
+    @app_commands.command(name='profile', description='Shows various information about the profile of a steam user.')
     @app_commands.guilds(whitelist)
-    async def _steam(self, ctx: discord.Interaction, community_id: str):
+    async def _profile(self, ctx: discord.Interaction, member: discord.Member = None):
         await ctx.response.defer(thinking=True)
 
         await log_message(ctx, f'`{ctx.user}` has used the `{ctx.command.name}` command.')
 
-        try:
-            # noinspection PyUnresolvedReferences
-            steam_id = SteamID.from_url('https://steamcommunity.com/id/{}'.format(community_id)
-                                        if 'https://steamcommunity.com/id/' not in community_id else community_id)
+        if not member:
+            member = ctx.user
 
-            if steam_id is None:
-                steam_id = community_id
+        if not already_exists(member.id):
+            return await ctx.edit_original_message(content=messages["profile_not_linked"])
 
-            # noinspection PyUnresolvedReferences
-            steam_user = self.steamAPI.ISteamUser.GetPlayerSummaries_v2(steamids=steam_id)["response"]["players"][0]
+        steam_id = get_steam_id(member.id)
 
-        except (requests.HTTPError, requests.exceptions.HTTPError, IndexError):
-            return await ctx.edit_original_message(content=messages["profile_not_found"])
+        # noinspection PyUnresolvedReferences
+        steam_user = self.steamAPI.ISteamUser.GetPlayerSummaries_v2(steamids=steam_id)["response"]["players"][0]
 
         # noinspection PyUnresolvedReferences
         bans = self.steamAPI.ISteamUser.GetPlayerBans_v1(steamids=steam_id)["players"][0]
@@ -315,23 +343,23 @@ class Profile(commands.Cog):
     @app_commands.command(name='unlink', description='De-links your Steam profile from the bot.')
     @app_commands.guilds(whitelist)
     async def _unlink(self, ctx: discord.Interaction):
-        await ctx.response.defer(thinking=True)
+        await ctx.response.defer(thinking=True, ephemeral=True)
 
         await log_message(ctx, f'`{ctx.user}` has used the `{ctx.command.name}` command.')
 
         if already_exists(ctx.user.id):
-            steam_id = get_steam_id(ctx.user.id)
+            view = UnlinkConfirm()
+            view.ctx = ctx
+            view.member = ctx.user
 
-            remove_user(ctx.user.id, steam_id)
-
-            return await ctx.edit_original_message(content=messages["profile_unlink_success"])
+            return await ctx.edit_original_message(content='Would you like to proceed?', view=view)
 
         else:
             return await ctx.edit_original_message(content=messages["profile_not_linked"])
 
-    @app_commands.command(name='profile', description='Update your profile.')
+    @app_commands.command(name='setup', description='Setup your profile.')
     @app_commands.guilds(whitelist)
-    async def _profile(self, ctx: discord.Interaction):
+    async def _setup(self, ctx: discord.Interaction):
         await log_message(ctx, f'`{ctx.user}` has used the `{ctx.command.name}` command.')
 
         if not already_exists(ctx.user.id):
@@ -437,6 +465,69 @@ class Profile(commands.Cog):
             )
 
             await ctx.edit_original_message(embed=embed, view=view)
+
+    @app_commands.command(name='user',
+                          description='Displays the profile of the author / the mentioned user, if found.')
+    @app_commands.guilds(whitelist)
+    async def _user(self, ctx: discord.Interaction, member: discord.Member = None):
+        await ctx.response.defer(thinking=True)
+
+        await log_message(ctx, f'`{ctx.user}` has used the `{ctx.command.name}` command.')
+
+        if member is None:
+            member = ctx.user
+
+        if not already_exists(member.id):
+            return await ctx.edit_original_message(content=messages["profile_not_linked"])
+
+        else:
+            user = get_user(member.id)
+
+            embed = discord.Embed(colour=self.bot.embed_colour)
+
+            embed.title = member.__str__()
+            embed.description = user["bio"]
+
+            embed.set_author(name='Chaoz Gaming', icon_url=chaoz_logo_url)
+            embed.set_thumbnail(url=member.display_avatar.url)
+
+            embed.add_field(name='Country', value=user["country"] or "Not set")
+            embed.add_field(name='Region', value=user["region"] or "Not set")
+            embed.add_field(name='Birthday', value=user["birthday"].strftime("%d %B, %Y")
+                            if user["birthday"] else "Not set")
+            embed.add_field(name='Timezone', value=user["timezone"])
+            embed.add_field(name='Favorite Game', value=user["favorite_game"] or "Not set")
+
+            embed.set_footer(text='Use `/profile` to update your profile information.')
+
+            await ctx.edit_original_message(embed=embed)
+
+    @tasks.loop(hours=24)
+    async def _wish_users(self):
+        users = get_birthday_bois()
+
+        if not users:
+            return
+
+        birthday_channel = self.bot.get_channel(birthday_channel_id)
+
+        for _user in users:
+            user = self.bot.get_user(_user[0])
+
+            if not user:
+                continue
+
+            try:
+                await user.send(messages["birthday_message"].format(user.mention))
+
+            except (discord.Forbidden, discord.errors.Forbidden):
+                pass
+
+            await birthday_channel.send(messages["birthday_message"].format(user.mention))
+
+    @commands.Cog.listener()
+    async def on_ready(self):
+        self._wish_users.start()
 
 
 async def setup(bot):

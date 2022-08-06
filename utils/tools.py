@@ -1,10 +1,11 @@
-#!/usr/bin/python3
+import datetime
 
 import discord
 
 import json
 import random
 import string
+from datetime import date
 
 
 def make_list_embed(fields, colour):
@@ -64,3 +65,8 @@ def split_string(text, limit, sep=" "):
     result = [pad(l, limit) for l in res]
 
     return result
+
+
+def calculate_age(born: datetime.date):
+    today = date.today()
+    return today.year - born.year - ((today.month, today.day) < (born.month, born.day))

@@ -1,4 +1,25 @@
 {
+    "admin": {
+        "admin_only": "This is an admin only command!",
+
+        "users_not_found": "No users found with the given constraints.",
+
+        "profile_previously_linked": "This user has already linked their Steam profile, if you would like to link a new Steam account, first use the `/forceunlink` command and then link their new account.",
+        "profile_already_linked": "This Steam account has already been linked by another user.",
+        "profile_not_linked": "This user hasn\\'t linked their steam account yet (use `/forcelink`).",
+        "profile_link_success": "The profile was linked successfully.",
+        "profile_unlink_success": "The Steam account for `{0}` has been unlinked.",
+
+        "action_success": "The action was successfully performed!",
+        "action_cancel": "The action was successfully cancelled!",
+
+        "already_member": "They\\'re already a part of the members of this team!",
+        "already_substitute": "They\\'re already a part of the substitutes of this team!",
+        "team_full": "Sorry, this team is already full.",
+        "team_member_force_add": "`{0}` has added `{1}` to the team `{2}` as a member.",
+        "team_substitute_force_add": "`{0}` has added `{1}` to the team `{2}` as a substitute."
+    },
+
     "games": {
         "admin_only": "This is an admin only command!",
         "add_game_success": "This game has been added! Use `/gamelogo` to set it\\'s logo.",
@@ -30,6 +51,7 @@
         "profile_link_success": "Verification successful! You may now remove the token from your profile name on Steam.",
         "auth_token_undetected": "Verification token (`{0}`) could not be detected, please make sure the changes have been saved.",
         "profile_unlink_success": "Your Steam account has been unlinked.",
+        "action_cancel": "The action was successfully cancelled!",
         "profile_not_linked": "This user hasn\\'t linked their steam account yet (use `/link`).",
         "bio_too_long": "Bio cannot be more than 200 characters.",
         "birthday_invalid": "Invalid birthday entered.",
@@ -39,7 +61,8 @@
         "country_too_long": "Country name cannot be more than 25 characters.",
         "country_name_invalid": "Invalid country name.",
         "country_updated": "Your country has been updated!",
-        "inventory_error": "No inventory details found for this user."
+        "inventory_error": "No inventory details found for this user.",
+        "birthday_message": "Wishing you a happy birthday, {0}! Best wishes from all of us at Chaoz Gaming."
     },
 
     "statistics": {

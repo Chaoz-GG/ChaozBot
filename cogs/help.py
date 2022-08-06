@@ -48,7 +48,7 @@ class Help(commands.Cog):
                             inline=False)
 
             embed.add_field(name='Profile',
-                            value=f'`steam`, `link`, `unlink`, `bio`, `country`, `inv`',
+                            value=f'`profile`, `link`, `unlink`, `setup`, `country`, `inv`',
                             inline=False)
 
             embed.add_field(name='Statistics',
@@ -68,6 +68,10 @@ class Help(commands.Cog):
 
             embed.add_field(name='General',
                             value=f'`view`',
+                            inline=False)
+
+            embed.add_field(name='Profile',
+                            value=f'`forcelink`, `forceunlink`, `forceadd`',
                             inline=False)
 
             embed.add_field(name='Games',
