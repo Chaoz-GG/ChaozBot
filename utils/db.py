@@ -588,6 +588,19 @@ def update_team_active_game(team_id: str, active_game: str):
     db.close()
 
 
+def update_team_region(team_id: str, region: str):
+    db = mysql.connector.connect(host=db_host, port=db_port, user=db_user,
+                                 passwd=db_password, database=db_name)
+    cursor = db.cursor(buffered=True)
+
+    # noinspection SqlDialectInspection,SqlNoDataSourceInspection
+    cursor.execute('update teams set REGION = %s where TEAM_ID = %s;', (region, team_id))
+    db.commit()
+
+    cursor.close()
+    db.close()
+
+
 def update_team_description(team_id: str, description: str):
     db = mysql.connector.connect(host=db_host, port=db_port, user=db_user,
                                  passwd=db_password, database=db_name)

@@ -62,7 +62,7 @@ class LeaderBoard(commands.Cog):
         channel = guild.get_channel(channel_id or self.lb_channel_id)
 
         if not channel_id:
-            with open('data/leaderboard.json') as f:
+            with open('data/leaderboard.json', 'w+') as f:
                 try:
                     lb_msgs = json.load(f)
 

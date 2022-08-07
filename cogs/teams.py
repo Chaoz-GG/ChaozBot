@@ -13,9 +13,9 @@ from discord.ext import commands
 
 from utils.tools import log_message
 from utils.db import already_exists, get_steam_id, get_region, get_all_team_names, get_all_team_abbreviations, \
-    create_team, update_team_message_id, update_team_active_game, update_team_description, update_team_org_name, \
-    get_team_by_id, get_team_by_message_id, check_team_members_full, check_team_subsitutes_full, add_team_member, \
-    add_team_substitute, check_team_member_exists, check_team_substitute_exists, get_team_members, \
+    create_team, update_team_message_id, update_team_active_game, update_team_region, update_team_description, \
+    update_team_org_name, get_team_by_id, get_team_by_message_id, check_team_members_full, check_team_subsitutes_full, \
+    add_team_member, add_team_substitute, check_team_member_exists, check_team_substitute_exists, get_team_members, \
     get_team_substitutes, remove_team_member, remove_team_substitute, remove_team, get_team_requested_members, \
     get_team_requested_substitutes, get_team_blacklist, add_team_requested_member, remove_team_requested_member, \
     add_team_requested_substitute, remove_team_requested_substitute, add_team_blacklist, remove_team_blacklist, \
@@ -370,7 +370,8 @@ class Edit(ui.Modal, title='Edit Team'):
         self.ctx = None
         self.team_id = None
 
-    active_game = ui.Select(placeholder='Choose your active game ...', max_values=1)
+    active_game = ui.Select(placeholder='Choose your active game ...', min_values=0, max_values=1)
+    region = ui.Select(placeholder='Choose your region ...', min_values=0, max_values=1)
     description = ui.TextInput(label='Description',
                                placeholder='The team description',
                                style=discord.TextStyle.long,
@@ -389,7 +390,7 @@ class Edit(ui.Modal, title='Edit Team'):
         channel = ctx.guild.get_channel(join_team_channel_id)
         message = await channel.fetch_message(team["message_id"])
         embed = message.embeds[0]
-        
+
         with open('data/games.json') as f:
             games = json.load(f)
 
@@ -399,10 +400,14 @@ class Edit(ui.Modal, title='Edit Team'):
             embed.set_footer(text=games[self.active_game.values[0]][0],
                              icon_url=f'https://bot.chaoz.gg/games/{self.active_game.values[0]}.png')
 
+        if self.region.values:
+            update_team_region(self.team_id, self.region.values[0])
+            embed.set_field_at(5, name='Region', value=self.region.values[0])
+
         if self.description.value:
             update_team_description(self.team_id, self.description.value)
             embed.description = self.description.value
-            
+
         if self.org_name.value:
             update_team_org_name(self.team_id, self.org_name.value)
             embed.set_field_at(4, name='Organization', value=f'**{self.org_name.value}**')
@@ -600,7 +605,17 @@ class CP(discord.ui.View):
     async def _edit_team(self, ctx: discord.Interaction, button: discord.ui.Button):
         team = get_team_by_id(self.team_id)
 
-        options = list()
+        active_game_options = list()
+
+        regions = [
+            "North America",
+            "South America",
+            "Europe",
+            "Africa",
+            "Asia",
+            "Oceania"
+        ]
+        region_options = list()
 
         with open('data/games.json') as f:
             games = json.load(f)
@@ -608,12 +623,16 @@ class CP(discord.ui.View):
         for game in team['games'].split('|'):
             for _game in games.items():
                 if _game[1][0] == game:
-                    options.append(discord.SelectOption(value=_game[0], label=_game[1][0]))
+                    active_game_options.append(discord.SelectOption(value=_game[0], label=_game[1][0]))
+
+        for _region in regions:
+            region_options.append(discord.SelectOption(value=_region, label=_region))
 
         modal = Edit()
         modal.ctx = ctx
         modal.team_id = self.team_id
-        modal.active_game.options = options
+        modal.active_game.options = active_game_options
+        modal.region.options = region_options
         await ctx.response.send_modal(modal)
         await modal.wait()
 
@@ -783,7 +802,7 @@ class Teams(commands.Cog):
     async def _send_initial_message(self):
         create_team_channel = self.bot.get_channel(self.create_team_channel_id)
 
-        with open('data/teams.json') as f:
+        with open('data/teams.json', 'w+') as f:
             try:
                 data = json.load(f)
 
