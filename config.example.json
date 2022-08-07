@@ -77,6 +77,8 @@
 
   "team_max_games": 5,
 
+  "chaoz_text": "Chaoz Gaming",
+
   "chaoz_logo_url": "https://bot.chaoz.gg/assets/chaoz_logo.png",
   "steam_logo_url": "https://bot.chaoz.gg/assets/steam_logo.png",
   "faceit_logo_url": "https://bot.chaoz.gg/assets/faceit_logo.png",

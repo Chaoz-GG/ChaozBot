@@ -325,13 +325,33 @@ def update_bio(user_id: int, bio: str):
     db.close()
 
 
-def update_favorite_game(user_id: int, favorite_game: str):
+def get_favorite_games(user_id: int):
     db = mysql.connector.connect(host=db_host, port=db_port, user=db_user,
                                  passwd=db_password, database=db_name)
     cursor = db.cursor(buffered=True)
 
     # noinspection SqlDialectInspection,SqlNoDataSourceInspection
-    cursor.execute('update users SET FAVORITE_GAME = %s where USER_ID = %s;', (favorite_game, user_id))
+    cursor.execute('select FAVORITE_GAMES from users where USER_ID = %s;', (user_id, ))
+
+    res = cursor.fetchone()[0]
+
+    cursor.close()
+    db.close()
+
+    if not res:
+        return []
+
+    else:
+        return res.split('|')
+
+
+def update_favorite_games(user_id: int, favorite_game: str):
+    db = mysql.connector.connect(host=db_host, port=db_port, user=db_user,
+                                 passwd=db_password, database=db_name)
+    cursor = db.cursor(buffered=True)
+
+    # noinspection SqlDialectInspection,SqlNoDataSourceInspection
+    cursor.execute('update users SET FAVORITE_GAMES = %s where USER_ID = %s;', (favorite_game, user_id))
     db.commit()
 
     cursor.close()

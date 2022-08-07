@@ -14,18 +14,24 @@ from steam.enums import EPersonaState
 
 from utils.tools import make_list_embed, generate_token, log_message
 from utils.db import get_steam_ids, get_steam_id, already_exists, remove_user, has_generated_token, initiate_auth, \
-    cleanup_auth, get_token, add_user, update_birthday, update_timezone, update_bio, update_favorite_game, \
-    update_country, update_region, update_hours, get_birthday_bois, get_user
+    cleanup_auth, get_token, add_user, update_birthday, update_timezone, update_bio, get_favorite_games, \
+    update_favorite_games, update_country, update_region, update_hours, get_birthday_bois, get_user
 
 
 with open('config.json') as json_file:
     data = json.load(json_file)
     whitelist = data['whitelist']
+
     steam_key = data['steam_key']
+
     mm_rank_role_ids = data['mm_rank_role_ids']
     faceit_rank_role_ids = data['faceit_rank_role_ids']
     region_role_ids = data['region_role_ids']
+
     birthday_channel_id = data['birthday_channel_id']
+
+    user_max_games = data['user_max_games']
+
     chaoz_logo_url = data['chaoz_logo_url']
 
 with open('data/messages.json') as _json_file:
@@ -34,14 +40,6 @@ with open('data/messages.json') as _json_file:
 
 
 class ProfileForm(ui.Modal, title='Profile Update'):
-    options = list()
-
-    with open('data/games.json') as f:
-        games = json.load(f)
-
-    for abbr, game in games.items():
-        options.append(discord.SelectOption(label=game[0], value=abbr))
-
     birthday = ui.TextInput(label='Birthday', placeholder='DD/MM/YYYY', max_length=10, required=False)
     timezone = ui.TextInput(label='Timezone', placeholder='Check https://bot.chaoz.gg/timezones.json', required=False)
     bio = ui.TextInput(label='Bio',
@@ -49,7 +47,7 @@ class ProfileForm(ui.Modal, title='Profile Update'):
                        style=discord.TextStyle.long,
                        max_length=300,
                        required=False)
-    favorite_game = ui.Select(placeholder='Choose your favorite game ...', options=options, max_values=1, min_values=0)
+    favorite_games = ui.Select(placeholder='Choose your favorite games ...', max_values=user_max_games, min_values=0)
 
     interaction: discord.Interaction = None
 
@@ -60,6 +58,11 @@ class ProfileForm(ui.Modal, title='Profile Update'):
 
         with open('data/games.json') as f:
             games = json.load(f)
+
+        game_role_ids = list()
+
+        for game in games.values():
+            game_role_ids.append(game[4])
 
         if self.birthday.value:
             birthday = self.birthday.value.replace('/', '')
@@ -84,8 +87,22 @@ class ProfileForm(ui.Modal, title='Profile Update'):
         if self.bio.value:
             update_bio(ctx.user.id, self.bio.value)
 
-        if self.favorite_game.values:
-            update_favorite_game(ctx.user.id, games[self.favorite_game.values[0]][0])
+        if self.favorite_games.values:
+            for role_id in game_role_ids:
+                role = ctx.guild.get_role(role_id)
+
+                if role in ctx.user.roles:
+                    await ctx.user.remove_roles(role)
+
+            _games = list()
+
+            for _game in self.favorite_games.values:
+                _games.append(games[_game][0])
+
+                game_role = ctx.guild.get_role(games[_game][4])
+                await ctx.user.add_roles(game_role)
+
+            update_favorite_games(ctx.user.id, "|".join(_games))
 
         return await ctx.edit_original_message(content=messages["profile_updated"])
 
@@ -366,6 +383,23 @@ class Profile(commands.Cog):
             return await ctx.edit_original_message(content=messages["profile_not_linked"])
 
         modal = ProfileForm()
+
+        options = list()
+
+        with open('data/games.json') as f:
+            games = json.load(f)
+
+        fav_games = get_favorite_games(ctx.user.id)
+
+        for abbr, game in games.items():
+            if game[0] in fav_games:
+                options.append(discord.SelectOption(label=game[0], value=abbr, default=True))
+
+            else:
+                options.append(discord.SelectOption(label=game[0], value=abbr))
+
+        modal.favorite_games.options = options
+
         await ctx.response.send_modal(modal)
         await modal.wait()
 

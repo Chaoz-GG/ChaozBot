@@ -623,10 +623,19 @@ class CP(discord.ui.View):
         for game in team['games'].split('|'):
             for _game in games.items():
                 if _game[1][0] == game:
-                    active_game_options.append(discord.SelectOption(value=_game[0], label=_game[1][0]))
+                    if _game[1][0] == team['active_game']:
+                        active_game_options.append(discord.SelectOption(value=_game[0], label=_game[1][0],
+                                                                        default=True))
+
+                    else:
+                        active_game_options.append(discord.SelectOption(value=_game[0], label=_game[1][0]))
 
         for _region in regions:
-            region_options.append(discord.SelectOption(value=_region, label=_region))
+            if _region == team['region']:
+                region_options.append(discord.SelectOption(value=_region, label=_region, default=True))
+
+            else:
+                region_options.append(discord.SelectOption(value=_region, label=_region))
 
         modal = Edit()
         modal.ctx = ctx
@@ -802,7 +811,7 @@ class Teams(commands.Cog):
     async def _send_initial_message(self):
         create_team_channel = self.bot.get_channel(self.create_team_channel_id)
 
-        with open('data/teams.json', 'w+') as f:
+        with open('data/teams.json') as f:
             try:
                 data = json.load(f)
 
