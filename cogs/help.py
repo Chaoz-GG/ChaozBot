@@ -12,6 +12,7 @@ from utils.tools import log_message
 with open('config.json') as json_file:
     data = json.load(json_file)
     whitelist = data['whitelist']
+
     chaoz_logo_url = data['chaoz_logo_url']
 
 
