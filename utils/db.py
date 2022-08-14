@@ -31,6 +31,24 @@ def already_exists(user_id: int):
     return False
 
 
+def archive_exists(user_id: int):
+    db = mysql.connector.connect(host=db_host, port=db_port, user=db_user,
+                                 passwd=db_password, database=db_name)
+    cursor = db.cursor(buffered=True)
+
+    # noinspection SqlDialectInspection, SqlNoDataSourceInspection
+    cursor.execute('select USER_ID from users_archive;')
+
+    for i in cursor:
+        if user_id in i:
+            cursor.close()
+            db.close()
+
+            return True
+
+    return False
+
+
 def get_all_users(region: str = None, favorite_game: str = None, age: int = None):
     db = mysql.connector.connect(host=db_host, port=db_port, user=db_user,
                                  passwd=db_password, database=db_name)
@@ -256,13 +274,53 @@ def remove_user(user_id: int, steam_id: int):
     cursor = db.cursor(buffered=True)
 
     # noinspection SqlDialectInspection,SqlNoDataSourceInspection
-    cursor.execute('delete from users where USER_ID = %s;', (user_id, ))
+    cursor.execute('delete from users where USER_ID = %s;', (user_id,))
+
+    # noinspection SqlDialectInspection,SqlNoDataSourceInspection
+    cursor.execute('delete from mm_stats where STEAM_ID = %s;', (steam_id,))
+
+    # noinspection SqlDialectInspection,SqlNoDataSourceInspection
+    cursor.execute('delete from faceit_stats where STEAM_ID = %s;', (steam_id,))
+
+    db.commit()
+
+    cursor.close()
+    db.close()
+
+
+def archive_user(user_id: int, steam_id: int):
+    db = mysql.connector.connect(host=db_host, port=db_port, user=db_user,
+                                 passwd=db_password, database=db_name)
+    cursor = db.cursor(buffered=True)
+
+    # noinspection SqlDialectInspection,SqlNoDataSourceInspection
+    cursor.execute('insert into users_archive select * from users where USER_ID = %s;', (user_id,))
+
+    # noinspection SqlDialectInspection,SqlNoDataSourceInspection
+    cursor.execute('delete from users where USER_ID = %s;', (user_id,))
 
     # noinspection SqlDialectInspection,SqlNoDataSourceInspection
     cursor.execute('delete from mm_stats where STEAM_ID = %s;', (steam_id, ))
 
     # noinspection SqlDialectInspection,SqlNoDataSourceInspection
     cursor.execute('delete from faceit_stats where STEAM_ID = %s;', (steam_id, ))
+
+    db.commit()
+
+    cursor.close()
+    db.close()
+
+
+def unarchive_user(user_id: int):
+    db = mysql.connector.connect(host=db_host, port=db_port, user=db_user,
+                                 passwd=db_password, database=db_name)
+    cursor = db.cursor(buffered=True)
+
+    # noinspection SqlDialectInspection,SqlNoDataSourceInspection
+    cursor.execute('insert into users select * from users_archive where USER_ID = %s;', (user_id,))
+
+    # noinspection SqlDialectInspection,SqlNoDataSourceInspection
+    cursor.execute('delete from users_archive where USER_ID = %s;', (user_id,))
 
     db.commit()
 

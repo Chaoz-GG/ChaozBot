@@ -31,8 +31,8 @@ with open('config.json') as _json_file:
     sudo_role_ids = _data['sudo_role_ids']
     team_max_games = _data['team_max_games']
 
+    chaoz_text = _data['chaoz_text']
     chaoz_logo_url = _data['chaoz_logo_url']
-    team_default_logo_url = _data['team_default_logo_url']
 
     sftp_host = _data['sftp_host']
     sftp_port = _data['sftp_port']
@@ -326,6 +326,18 @@ class Team(ui.Modal, title='New Chaoz Team'):
                     self.abbreviation.value.upper(), region, steam_id, ctx.user.id,
                     org_name=self.org_name.value, description=self.description.value)
 
+        key = paramiko.RSAKey.from_private_key_file(sftp_pvt_key, password=sftp_pvt_key_password)
+
+        transport = paramiko.Transport((sftp_host, sftp_port))
+        transport.connect(username=sftp_username, pkey=key)
+        sftp = paramiko.SFTPClient.from_transport(transport)
+
+        with open('assets/images/team-default.png') as f:
+            sftp.putfo(f, f'public_html/teams/{team_id}.png')
+
+        sftp.close()
+        transport.close()
+
         join_team_channel = ctx.guild.get_channel(join_team_channel_id)
 
         embed = discord.Embed(colour=0xffffff)
@@ -333,9 +345,9 @@ class Team(ui.Modal, title='New Chaoz Team'):
         embed.title = self.name.value
         embed.description = self.description.value
 
-        embed.set_author(name='CHAOZ Gaming', icon_url=chaoz_logo_url)
+        embed.set_author(name=chaoz_text, icon_url=chaoz_logo_url)
 
-        embed.set_thumbnail(url=team_default_logo_url)
+        embed.set_thumbnail(url=f'https://bot.chaoz.gg/teams/{team_id}.png')
 
         embed.add_field(name='Team ID', value=f'`{team_id}`')
         embed.add_field(name='Game(s)', value=', '.join(_games))
@@ -499,7 +511,6 @@ class TeamCPSelect(discord.ui.Select):
 
 class TeamLogoSelect(discord.ui.Select):
     def __init__(self, options):
-
         self.ctx = None
         self.logo = None
 
@@ -533,6 +544,64 @@ class TeamLogoSelect(discord.ui.Select):
         await log_message(self.ctx, f'`{self.ctx.user}` has updated the logo for `{team["name"]}`.')
 
         await self.ctx.edit_original_message(content=messages["logo_updated"], embed=None, view=None)
+
+
+class TeamEmbedPublish(discord.ui.Select):
+    def __init__(self, options):
+        self.ctx = None
+
+        super().__init__(placeholder='Select the team.',
+                         min_values=1, max_values=options.__len__(), options=options)
+
+    async def callback(self, ctx: discord.Interaction):
+        await ctx.response.defer()
+
+        await self.ctx.edit_original_message(content=messages["embeds_publishing"], embed=None, view=None)
+
+        for team_id in self.values:
+            team = get_team_by_id(team_id)
+
+            embed = discord.Embed(colour=0xffffff)
+
+            embed.title = team['name']
+            embed.description = team['description']
+
+            embed.set_author(name=chaoz_text, icon_url=chaoz_logo_url)
+
+            embed.set_thumbnail(url=f'https://bot.chaoz.gg/teams/{team_id}.png')
+
+            embed.add_field(name='Team ID', value=f'`{team["id"]}`')
+            embed.add_field(name='Game(s)', value=', '.join(team["games"].split("|")))
+            embed.add_field(name='Active Game', value=f'**{team["active_game"]}**')
+            embed.add_field(name='Abbreviation', value=f'`{team["abbreviation"].upper()}`')
+
+            if team['org_name']:
+                embed.add_field(name='Organization', value=f'**{team["org_name"]}**')
+
+            embed.add_field(name='Region', value=team['region'])
+
+            captain = ctx.guild.get_member(team['captain_discord_id'])
+
+            embed.add_field(name='Captain', value=captain.mention)
+
+            with open('data/games.json') as f:
+                games = json.load(f)
+
+            for _game in games.items():
+                if _game[1][0] == team['active_game']:
+                    embed.set_footer(text=team['active_game'], icon_url=f'https://bot.chaoz.gg/games/{_game[0]}.png')
+
+            view = Options()
+            view.team = team
+
+            join_team_channel = ctx.guild.get_channel(join_team_channel_id)
+
+            msg = await join_team_channel.send(embed=embed, view=view)
+            update_team_message_id(team_id, msg.id)
+
+            await log_message(self.ctx, f'`{self.ctx.user}` has published the embed for `{team["name"]}`.')
+
+        await self.ctx.edit_original_message(content=messages["embeds_published"], embed=None, view=None)
 
 
 class DeleteConfirm(discord.ui.View):
@@ -966,7 +1035,7 @@ To create a new team, press the \u2795 button.
         embed.title = team['name']
         embed.description = team['description']
 
-        embed.set_author(name='CHAOZ Gaming', icon_url=chaoz_logo_url)
+        embed.set_author(name=chaoz_text, icon_url=chaoz_logo_url)
 
         embed.set_thumbnail(url=f'https://bot.chaoz.gg/teams/{team_id}.png')
 
@@ -993,6 +1062,47 @@ To create a new team, press the \u2795 button.
 
         view = Options()
         view.team = team
+
+        await ctx.edit_original_message(embed=embed, view=view)
+
+    @app_commands.command(name='publish_teams', description='Publish the embed for team(s).')
+    @app_commands.guilds(whitelist)
+    async def _publish_lb(self, ctx: discord.Interaction):
+        await ctx.response.defer(thinking=True)
+
+        await log_message(ctx, f'`{ctx.user}` has used the `{ctx.command.name}` command.')
+
+        sudo_roles = []
+
+        for sudo_role_id in sudo_role_ids:
+            sudo_roles.append(ctx.guild.get_role(sudo_role_id))
+
+        for sudo_role in sudo_roles:
+            if sudo_role in ctx.user.roles:
+                break
+
+        else:
+            return await ctx.edit_original_message(content=messages["admin_only"])
+
+        teams = get_teams_by_captain_id(-1)
+
+        embed = discord.Embed(colour=0xffffff)
+
+        embed.title = 'Select Team'
+        embed.description = 'Which team would you like to update the logo for?\n'
+
+        options = list()
+
+        for i, team_details in enumerate(teams, 1):
+            embed.description += f'\n`{i}.` {team_details[1]}'
+
+            options.append(discord.SelectOption(label=team_details[1], value=team_details[0]))
+
+        item = TeamEmbedPublish(options=options)
+        item.ctx = ctx
+
+        view = discord.ui.View()
+        view.add_item(item)
 
         await ctx.edit_original_message(embed=embed, view=view)
 

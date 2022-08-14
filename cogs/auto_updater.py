@@ -7,6 +7,7 @@ import aiohttp
 from steam.webapi import WebAPI
 
 from utils.db import get_steam_ids, remove_user, get_user_id, update_country, update_region, update_hours
+from utils.tools import log_message
 
 with open('config.json') as _json_file:
     _data = json.load(_json_file)
@@ -29,7 +30,7 @@ class AutoUpdater(commands.Cog):
 
     # Auto-update stats
     @tasks.loop(hours=update_frequency)
-    async def _update_stats(self):
+    async def update_stats(self):
         guild = self.bot.get_guild(self.whitelist)
 
         for steam_id in get_steam_ids():
@@ -39,6 +40,8 @@ class AutoUpdater(commands.Cog):
             if not member:
                 remove_user(user_id, steam_id)
                 continue
+
+            await log_message(member, f'Auto-updating stats for `{member}`. This may take a while...')
 
             async with aiohttp.ClientSession() as session:
                 async with session.get(f'http://localhost:5000/stats/update/mm/{steam_id}'):
@@ -114,9 +117,9 @@ class AutoUpdater(commands.Cog):
 
             update_hours(member.id, hours)
 
-    @commands.Cog.listener()
-    async def on_ready(self):
-        self._update_stats.start()
+    @update_stats.before_loop
+    async def _before_update_stats(self):
+        await self.bot.wait_until_ready()
 
 
 async def setup(bot):

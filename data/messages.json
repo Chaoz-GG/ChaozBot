@@ -6,15 +6,15 @@
 
         "profile_previously_linked": "This user has already linked their Steam profile, if you would like to link a new Steam account, first use the `/forceunlink` command and then link their new account.",
         "profile_already_linked": "This Steam account has already been linked by another user.",
-        "profile_not_linked": "This user hasn\\'t linked their steam account yet (use `/forcelink`).",
+        "profile_not_linked": "This user hasn't linked their steam account yet (use `/forcelink`).",
         "profile_link_success": "The profile was linked successfully.",
         "profile_unlink_success": "The Steam account for `{0}` has been unlinked.",
 
         "action_success": "The action was successfully performed!",
         "action_cancel": "The action was successfully cancelled!",
 
-        "already_member": "They\\'re already a part of the members of this team!",
-        "already_substitute": "They\\'re already a part of the substitutes of this team!",
+        "already_member": "They're already a part of the members of this team!",
+        "already_substitute": "They're already a part of the substitutes of this team!",
         "team_full": "Sorry, this team is already full.",
         "team_member_force_add": "`{0}` has added `{1}` to the team `{2}` as a member.",
         "team_substitute_force_add": "`{0}` has added `{1}` to the team `{2}` as a substitute."
@@ -22,7 +22,7 @@
 
     "games": {
         "admin_only": "This is an admin only command!",
-        "add_game_success": "This game has been added! Use `/gamelogo` to set it\\'s logo.",
+        "add_game_success": "This game has been added! Use `/gamelogo` to set it's logo.",
         "game_updated": "The game has been updated!",
         "game_removed": "The game has been removed!",
         "game_logo_updated": "The logo has been updated!"
@@ -37,7 +37,7 @@
     "looking-for": {
         "invalid_age": "The age entered is invalid.",
         "invalid_game_type": "The game type entered is invalid.",
-        "profile_not_linked": "This user hasn\\'t linked their steam account yet (use `/link`).",
+        "profile_not_linked": "This user hasn't linked their steam account yet (use `/link`).",
         "mm_stats_not_found": "No matchmaking stats found for this user.",
         "faceit_stats_not_found": "No FaceIT stats found for this user.",
         "ad_posted": "Your advertisement has been posted in {0}."
@@ -52,7 +52,7 @@
         "auth_token_undetected": "Verification token (`{0}`) could not be detected, please make sure the changes have been saved.",
         "profile_unlink_success": "Your Steam account has been unlinked.",
         "action_cancel": "The action was successfully cancelled!",
-        "profile_not_linked": "This user hasn\\'t linked their steam account yet (use `/link`).",
+        "profile_not_linked": "This user hasn't linked their steam account yet (use `/link`).",
         "bio_too_long": "Bio cannot be more than 200 characters.",
         "birthday_invalid": "Invalid birthday entered.",
         "timezone_invalid": "Invalid timezone.",
@@ -67,20 +67,20 @@
 
     "statistics": {
         "admin_only": "This is an admin only command!",
-        "profile_not_linked": "This user hasn\\'t linked their steam account yet (use `/link`).",
+        "profile_not_linked": "This user hasn't linked their steam account yet (use `/link`).",
         "mm_stats_not_found": "No matchmaking stats found for this user.",
-        "faceit_stats_not_found": "No Faceit stats found for this user.",
+        "faceit_stats_not_found": "No FaceIT stats found for this user.",
         "stats_updated": "The profile and statistics has been updated."
     },
 
     "teams": {
-        "member_request_accept_member": "You\\'ve been accepted into the team **{0}**.",
+        "member_request_accept_member": "You've been accepted into the team **{0}**.",
         "member_request_accept_captain": "{0} has been added to your team **{1}** as a member.",
         "member_request_reject_member": "Sorry, your membership into the team **{0}** as a member has been rejected.",
         "member_request_reject_captain": "{0} has been rejected from your team **{1}**.",
         "member_request_timeout_captain": "You failed to accept / reject the request of {0} to join your team **{1}**.",
 
-        "substitute_request_accept_substitute": "You\\'ve been accepted into the team **{0}** as a substitute.",
+        "substitute_request_accept_substitute": "You've been accepted into the team **{0}** as a substitute.",
         "substitute_request_accept_captain": "{0} has been added to your team **{1}** as a substitute.",
         "substitute_request_reject_substitute": "Sorry, your membership into the team **{0}** as a substitute has been rejected.",
         "substitute_request_reject_captain": "{self.substitute_text} has been rejected from your team **{0}**.",
@@ -89,8 +89,8 @@
         "steam_account_link_warning": "You need to link your Steam account (using `/link`) before you can join a team.",
         "already_requested": "You have already requested to join this team.",
         "blacklisted": "You have been blacklisted from this team. Please ask the captain to remove your blacklist first from the team control panel.",
-        "already_member": "You\\'re already a part of the members of this team!",
-        "already_substitute": "You\\'re already a part of the substitutes of this team!",
+        "already_member": "You're already a part of the members of this team!",
+        "already_substitute": "You're already a part of the substitutes of this team!",
         "team_full": "Sorry, this team is already full.",
         "request_placed": "Your request to join **{0}** has been placed!",
 
@@ -98,6 +98,9 @@
         "team_abbreviation_exists": "This team abbreviation already exists!",
         "team_created": "Team **{0}** has been created! Use command `/teamlogo` to set the custom team logo!",
         "team_updated": "Team **{0}** has been updated!",
+
+        "embeds_publishing": "Publishing embed(s) ...",
+        "embeds_published": "The team embed(s) have been published!",
 
         "action_success": "The action was successfully performed!",
         "action_cancel": "The action was successfully cancelled!",

@@ -1,23 +1,22 @@
-import datetime
-
-import discord
-
 import json
 import random
 import string
 from datetime import date
 
+import discord
+
 
 def make_list_embed(fields, colour):
     embed = discord.Embed(colour=colour)
+
     for key, value in fields.items():
         embed.add_field(name=key, value=value, inline=True)
+
     return embed
 
 
 def generate_token():
-    return '-' + ''.join(random.choices(string.ascii_uppercase +
-                                        string.digits, k=5))
+    return '-' + ''.join(random.choices(string.ascii_uppercase + string.digits, k=5))
 
 
 def parse_cooldown(cooldown):
@@ -67,6 +66,6 @@ def split_string(text, limit, sep=" "):
     return result
 
 
-def calculate_age(born: datetime.date):
+def calculate_age(birthdate: date):
     today = date.today()
-    return today.year - born.year - ((today.month, today.day) < (born.month, born.day))
+    return today.year - birthdate.year - ((today.month, today.day) < (birthdate.month, birthdate.day))

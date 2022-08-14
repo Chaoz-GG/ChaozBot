@@ -10,8 +10,8 @@ import requests
 from steam.webapi import WebAPI
 from steam.steamid import SteamID
 
-from utils.db import get_all_users, get_steam_id, get_steam_ids, already_exists, add_user, remove_user, update_hours, \
-    update_country, update_region, get_team_by_id, get_teams_by_captain_id, check_team_member_exists, \
+from utils.db import get_all_users, get_steam_id, get_user_id, get_steam_ids, already_exists, add_user, remove_user, \
+    update_hours, update_country, update_region, get_team_by_id, get_teams_by_captain_id, check_team_member_exists, \
     check_team_substitute_exists, check_team_members_full, check_team_subsitutes_full, add_team_member, \
     add_team_substitute, remove_team_requested_member, remove_team_requested_substitute, remove_team_blacklist
 from utils.tools import log_message
@@ -429,6 +429,34 @@ class Admin(commands.Cog):
         view.add_item(item)
 
         await ctx.edit_original_message(embed=embed, view=view)
+
+    @app_commands.command(name='prune_users', description='Prune users who have left the server (admin-only).')
+    @app_commands.guilds(whitelist)
+    async def _prune_users(self, ctx: discord.Interaction):
+        await ctx.response.defer(thinking=True, ephemeral=True)
+
+        await log_message(ctx, f'`{ctx.user}` has used the `{ctx.command.name}` command.')
+
+        sudo_roles = []
+
+        for sudo_role_id in sudo_role_ids:
+            sudo_roles.append(ctx.guild.get_role(sudo_role_id))
+
+        for sudo_role in sudo_roles:
+            if sudo_role in ctx.user.roles:
+                break
+
+        else:
+            return await ctx.edit_original_message(content=messages["admin_only"])
+
+        for steam_id in get_steam_ids():
+            user_id = get_user_id(steam_id)
+            member = ctx.guild.get_member(user_id)
+
+            if not member:
+                remove_user(user_id, steam_id)
+
+                await log_message(ctx, f'Removed `{member}` from database.')
 
 
 async def setup(bot):
