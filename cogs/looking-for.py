@@ -13,13 +13,18 @@ from discord import ui
 from discord import app_commands
 from discord.ext import commands
 
-from utils.db import already_exists, get_steam_id, get_country, get_bio, get_hours
-from utils.tools import split_string, log_message
+from utils.db import already_exists, get_steam_id, get_user, get_country, get_region, get_bio, get_hours, \
+    get_team_by_id, get_teams_by_captain_id
+from utils.tools import split_string, log_message, calculate_age
 
 with open('config.json') as _json_file:
     _data = json.load(_json_file)
     whitelist = _data['whitelist']
     steam_key = _data['steam_key']
+
+    lf_channel_id = _data['lf_channel_id']
+
+    chaoz_text = _data['chaoz_text']
     chaoz_logo_url = _data['chaoz_logo_url']
 
 with open('data/messages.json') as _json_file:
@@ -27,8 +32,7 @@ with open('data/messages.json') as _json_file:
     messages = messages["looking-for"]
 
 
-class LFG(ui.Modal, title='LFG Form'):
-    age = ui.TextInput(label='Age', placeholder='Your age', required=False)
+class LFG(ui.Modal, title='Looking For Game'):
     role = ui.TextInput(label='Role', placeholder='Your role in a match')
     game_type = ui.TextInput(label='Game Type', placeholder='MM / FaceIT / Wingman / 1v1 / DZ')
 
@@ -39,27 +43,108 @@ class LFG(ui.Modal, title='LFG Form'):
 
         await ctx.response.defer(thinking=True)
 
-        try:
-            _age = int(self.age.value)
-
-        except ValueError:
-            await ctx.edit_original_message(content=messages["invalid_age"])
-
         if self.game_type.value.lower() not in ['mm', 'faceit', 'wingman', '1v1', 'dz']:
             await ctx.edit_original_message(content=messages["invalid_game_type"])
 
 
-class LFP(ui.Modal, title='LFP Form'):
-    name = ui.TextInput(label='Team Name', placeholder='The name of the team')
-    country_region = ui.TextInput(label='Country / Region',
-                                  placeholder='Which country / region should players be from?')
+class LFPTeamSelect(discord.ui.Select):
+    def __init__(self, options):
+        self.ctx = None
+
+        super().__init__(placeholder='Select the team.',
+                         min_values=1, max_values=1, options=options)
+
+    async def callback(self, ctx: discord.Interaction):
+        modal = LFP()
+        await ctx.response.send_modal(modal)
+        await modal.wait()
+
+        ctx = modal.interaction
+
+        team = get_team_by_id(self.values[0])
+
+        embed = discord.Embed(colour=0xffffff)
+
+        embed.set_thumbnail(url=chaoz_logo_url)
+
+        embed.title = 'Looking for Players'
+        embed.description = f'**{team["name"]}** is looking for players!'
+
+        embed.add_field(name='Region', value=team["region"])
+        embed.add_field(name='Requirements', value=modal.requirements.value, inline=False)
+        embed.add_field(name='Offers', value=modal.offers.value, inline=False)
+        embed.add_field(name='Contact', value=ctx.guild.get_member(team["captain_discord_id"]).mention)
+
+        with open('data/games.json') as f:
+            games = json.load(f)
+
+        for _game in games.items():
+            if _game[1][0] == team['active_game']:
+                embed.set_footer(text=team['active_game'], icon_url=f'https://bot.chaoz.gg/games/{_game[0]}.png')
+
+        channel = ctx.guild.get_channel(lf_channel_id)
+
+        await channel.send(embed=embed)
+
+        await self.ctx.edit_original_message(content=messages["ad_posted"].format(channel.mention),
+                                             embed=None, view=None)
+
+
+class LFCTeamSelect(discord.ui.Select):
+    def __init__(self, options):
+        self.ctx = None
+
+        super().__init__(placeholder='Select the team.',
+                         min_values=1, max_values=1, options=options)
+
+    async def callback(self, ctx: discord.Interaction):
+        modal = LFC()
+        await ctx.response.send_modal(modal)
+        await modal.wait()
+
+        ctx = modal.interaction
+
+        team = get_team_by_id(self.values[0])
+
+        embed = discord.Embed(colour=0xffffff)
+
+        embed.set_author(name=chaoz_text, icon_url=chaoz_logo_url)
+        embed.set_thumbnail(url=f'https://bot.chaoz.gg/teams/{self.values[0]}.png')
+
+        embed.title = 'Looking for Coach'
+        embed.description = f'**{team["name"]}** are looking for a coach!'
+
+        embed.add_field(name='Region', value=team["region"])
+
+        if modal.experience.value:
+            embed.add_field(name='Experience', value=modal.experience.value)
+
+        embed.add_field(name='Offers', value=modal.offers.value, inline=False)
+        embed.add_field(name='Expectations', value=modal.expectations.value, inline=False)
+        embed.add_field(name='Contact', value=ctx.guild.get_member(team["captain_discord_id"]).mention)
+
+        with open('data/games.json') as f:
+            games = json.load(f)
+
+        for _game in games.items():
+            if _game[1][0] == team['active_game']:
+                embed.set_footer(text=team['active_game'], icon_url=f'https://bot.chaoz.gg/games/{_game[0]}.png')
+
+        channel = ctx.guild.get_channel(lf_channel_id)
+
+        await channel.send(embed=embed)
+
+        await self.ctx.edit_original_message(content=messages["ad_posted"].format(channel.mention),
+                                             embed=None, view=None)
+
+
+class LFP(ui.Modal, title='Looking For Players'):
     requirements = ui.TextInput(label='Requirements',
                                 placeholder='What expectations should the players fulfil? (Rank, Language, etc.)',
                                 style=discord.TextStyle.paragraph)
     offers = ui.TextInput(label='Offers',
                           placeholder='What does the team offer to players?',
                           style=discord.TextStyle.paragraph)
-    contact = ui.TextInput(label='Contact', placeholder='Whom/Where to contact for applying?')
 
     interaction: discord.Interaction = None
 
@@ -69,8 +154,7 @@ class LFP(ui.Modal, title='LFP Form'):
         await ctx.response.defer(thinking=True)
 
 
-class LFT(ui.Modal, title='LFT Form'):
-    age = ui.TextInput(label='Age', placeholder='Your age')
+class LFT(ui.Modal, title='Looking For Team'):
     role = ui.TextInput(label='Role', placeholder='Your role in a match')
     about_me = ui.TextInput(label='About Me', placeholder='A bit about yourself...', style=discord.TextStyle.paragraph)
 
@@ -81,17 +165,8 @@ class LFT(ui.Modal, title='LFT Form'):
 
         await ctx.response.defer(thinking=True)
 
-        try:
-            _age = int(self.age.value)
 
-        except ValueError:
-            await ctx.edit_original_message(content=messages["invalid_age"])
-
-
-class LFC(ui.Modal, title='LFC Form'):
-    name = ui.TextInput(label='Team Name', placeholder='The name of the team')
-    country_region = ui.TextInput(label='Country / Region',
-                                  placeholder='Which country / region should the coach be from?')
+class LFC(ui.Modal, title='Looking For Coach'):
     experience = ui.TextInput(label='Experience', placeholder='How experienced coaches are you looking for?',
                               required=False)
     offers = ui.TextInput(label='Offers',
@@ -106,7 +181,7 @@ class LFC(ui.Modal, title='LFC Form'):
     async def on_submit(self, ctx: discord.Interaction):
         self.interaction = ctx
 
-        await ctx.response.defer(thinking=True)
+        await ctx.response.defer()
 
 
 class LookingFor(commands.Cog):
@@ -114,10 +189,6 @@ class LookingFor(commands.Cog):
         self.bot = bot
 
         self.steamAPI = WebAPI(steam_key)
-
-        with open('config.json') as json_file:
-            data = json.load(json_file)
-            self.lf_channel_id = data['lf_channel_id']
 
         self.mm_ranks = {
             0: 'Unranked',
@@ -162,7 +233,7 @@ class LookingFor(commands.Cog):
 
         embed = discord.Embed(colour=self.bot.embed_colour)
 
-        embed.set_thumbnail(url=chaoz_logo_url)
+        embed.set_author(name=chaoz_text, icon_url=chaoz_logo_url)
 
         if modal.game_type.value.lower() == '1v1':
             embed.title = 'Looking for Game (1v1)'
@@ -199,12 +270,15 @@ class LookingFor(commands.Cog):
         # noinspection PyUnresolvedReferences
         steam_user = self.steamAPI.ISteamUser.GetPlayerSummaries_v2(steamids=steam_id)["response"]["players"][0]
 
+        user = get_user(ctx.user.id)
         hours = get_hours(ctx.user.id)
 
-        embed.add_field(name='Player',
-                        value=f'[{steam_user["personaname"]}](https://steamcommunity.com/profiles/{steam_id})')
+        embed.set_thumbnail(url=steam_user["avatarfull"])
 
-        embed.add_field(name='Age', value=modal.age.value)
+        embed.description = f'[{steam_user["personaname"]}](https://steamcommunity.com/profiles/{steam_id}) - ' \
+                            f'{ctx.user.mention} is looking for a **{modal.game_type.value}** game.'
+
+        embed.add_field(name='Age', value=calculate_age(user["birthday"]))
         embed.add_field(name='Role', value=modal.role.value)
         embed.add_field(name='Hours', value=hours if hours else 'Private')
 
@@ -391,46 +465,43 @@ Most Played Map:
 
             embed.set_image(url=f'attachment://{file_name}.png')
 
-        channel = ctx.guild.get_channel(self.lf_channel_id)
+        channel = ctx.guild.get_channel(lf_channel_id)
 
-        view = discord.ui.View()
-        view.add_item(
-            discord.ui.Button(label='Message Me',
-                              url=f'https://discord.com/users/{ctx.user.id}')
-        )
-
-        await channel.send(embed=embed, file=file, view=view)
+        await channel.send(embed=embed, file=file)
 
         await ctx.edit_original_message(content=messages["ad_posted"].format(channel.mention))
 
     @app_commands.command(name='lfp', description='Send a looking-for-player advertisement.')
     @app_commands.guilds(whitelist)
     async def _lfp(self, ctx: discord.Interaction):
+        await ctx.response.defer(thinking=True)
+
         await log_message(ctx, f'`{ctx.user}` has used the `{ctx.command.name}` command.')
 
-        modal = LFP()
-        await ctx.response.send_modal(modal)
-        await modal.wait()
+        teams = get_teams_by_captain_id(ctx.user.id)
 
-        ctx = modal.interaction
+        if not teams:
+            return await ctx.edit_original_message(content=messages["no_captain"])
 
-        embed = discord.Embed(colour=self.bot.embed_colour)
+        embed = discord.Embed(colour=0xffffff)
 
-        embed.set_thumbnail(url=chaoz_logo_url)
+        embed.title = 'Select Team'
+        embed.description = 'Which team would you like to post an advertisement for?\n'
 
-        embed.title = 'Looking for Players'
-        embed.description = f'**{modal.name.value}** is looking for players!'
+        options = list()
 
-        embed.add_field(name='Country / Region', value=modal.country_region.value)
-        embed.add_field(name='Requirements', value=modal.requirements.value, inline=False)
-        embed.add_field(name='Offers', value=modal.offers.value, inline=False)
-        embed.add_field(name='Contact', value=modal.contact.value)
+        for i, team_details in enumerate(teams, 1):
+            embed.description += f'\n`{i}.` {team_details[1]}'
 
-        channel = ctx.guild.get_channel(self.lf_channel_id)
+            options.append(discord.SelectOption(label=team_details[1], value=team_details[0]))
 
-        await channel.send(embed=embed)
+        item = LFPTeamSelect(options=options)
+        item.ctx = ctx
 
-        await ctx.edit_original_message(content=messages["ad_posted"].format(channel.mention))
+        view = discord.ui.View()
+        view.add_item(item)
+
+        await ctx.edit_original_message(embed=embed, view=view)
 
     @app_commands.command(name='lft', description='Send a looking-for-team advertisement.')
     @app_commands.guilds(whitelist)
@@ -447,76 +518,111 @@ Most Played Map:
         ctx = modal.interaction
 
         steam_id = get_steam_id(ctx.user.id)
-
         # noinspection PyUnresolvedReferences
         steam_user = self.steamAPI.ISteamUser.GetPlayerSummaries_v2(steamids=steam_id)["response"]["players"][0]
 
-        hours = get_hours(ctx.user.id)
-
         embed = discord.Embed(colour=self.bot.embed_colour)
 
-        embed.set_thumbnail(url=chaoz_logo_url)
+        embed.set_author(name=chaoz_text, icon_url=chaoz_logo_url)
+        embed.set_thumbnail(url=steam_user["avatarfull"])
 
         embed.title = 'Looking for Team'
         embed.description = f'**[{steam_user["personaname"]}](https://steamcommunity.com/profiles/{steam_id})** ' \
-                            f'is looking for a team!' \
+                            f'- {ctx.user.mention} is looking for a team!' \
                             f'\n\nUse `/mmstats` and `/faceitstats` to view their in-game statistics.'
 
-        embed.add_field(name='Age', value=modal.age.value)
+        user = get_user(ctx.user.id)
+
+        embed.add_field(name='Age', value=calculate_age(user['birthday']))
         embed.add_field(name='Role', value=modal.role.value)
 
         country = get_country(ctx.user.id)
+        region = get_region(ctx.user.id)
+        hours = get_hours(ctx.user.id)
 
-        res = requests.get(f'https://restcountries.com/v3.1/name/{country}')
-
-        res = res.json()
-
-        region = res[0]["region"]
-
-        if region == "Americas":
-            region = res[0]["subregion"]
-
-        embed.add_field(name='Country - Region', value=f'{country} - {region}')
+        embed.add_field(name='Country / Region', value=f'{country} / {region}')
         embed.add_field(name='Hours', value=hours if hours else 'Private')
-        embed.add_field(name='About me', value=modal.about_me.value, inline=False)
+        embed.add_field(name='About Me', value=modal.about_me.value, inline=False)
 
-        channel = ctx.guild.get_channel(self.lf_channel_id)
+        channel = ctx.guild.get_channel(lf_channel_id)
 
         await channel.send(embed=embed)
 
         await ctx.edit_original_message(content=messages["ad_posted"].format(channel.mention))
 
     @app_commands.command(name='lfc', description='Send a looking-for-coach advertisement.')
+    @app_commands.choices(seeker=[
+        app_commands.Choice(name='Individual', value='individual'),
+        app_commands.Choice(name='Team', value='team')
+    ])
     @app_commands.guilds(whitelist)
-    async def _lfc(self, ctx: discord.Interaction):
+    async def _lfc(self, ctx: discord.Interaction, seeker: app_commands.Choice[str]):
         await log_message(ctx, f'`{ctx.user}` has used the `{ctx.command.name}` command.')
 
-        modal = LFC()
-        await ctx.response.send_modal(modal)
-        await modal.wait()
+        if seeker.value == 'individual':
+            modal = LFC()
+            await ctx.response.send_modal(modal)
+            await modal.wait()
 
-        ctx = modal.interaction
+            ctx = modal.interaction
 
-        embed = discord.Embed(colour=self.bot.embed_colour)
+            embed = discord.Embed(colour=self.bot.embed_colour)
 
-        embed.set_thumbnail(url=chaoz_logo_url)
+            steam_id = get_steam_id(ctx.user.id)
+            # noinspection PyUnresolvedReferences
+            steam_user = self.steamAPI.ISteamUser.GetPlayerSummaries_v2(steamids=steam_id)["response"]["players"][0]
 
-        embed.title = 'Looking for Coach'
-        embed.description = f'**{modal.name.value}** are looking for a coach!'
+            embed.set_author(name=chaoz_text, icon_url=chaoz_logo_url)
+            embed.set_thumbnail(url=steam_user["avatarfull"])
 
-        embed.add_field(name='Country / Region', value=modal.country_region.value)
+            embed.title = 'Looking for Coach'
+            embed.description = f'[{steam_user["personaname"]}](https://steamcommunity.com/profiles/{steam_id}) ' \
+                                f'- {ctx.user.mention} is looking for a coach!'
 
-        if modal.experience.value:
-            embed.add_field(name='Experience', value=modal.experience.value)
+            country = get_country(ctx.user.id)
+            region = get_region(ctx.user.id)
 
-        embed.add_field(name='Offers', value=modal.offers.value, inline=False)
-        embed.add_field(name='Expectations', value=modal.expectations.value, inline=False)
+            embed.add_field(name='Country / Region', value=f'{country} / {region}')
 
-        channel = ctx.guild.get_channel(self.lf_channel_id)
+            if modal.experience.value:
+                embed.add_field(name='Experience', value=modal.experience.value)
 
-        await channel.send(embed=embed)
+            embed.add_field(name='Offers', value=modal.offers.value, inline=False)
+            embed.add_field(name='Expectations', value=modal.expectations.value, inline=False)
 
-        await ctx.edit_original_message(content=messages["ad_posted"].format(channel.mention))
+            channel = ctx.guild.get_channel(lf_channel_id)
+
+            await channel.send(embed=embed)
+
+            await ctx.edit_original_message(content=messages["ad_posted"].format(channel.mention))
+
+        else:
+            await ctx.response.defer(thinking=True)
+
+            teams = get_teams_by_captain_id(ctx.user.id)
+
+            if not teams:
+                return await ctx.edit_original_message(content=messages["no_captain"])
+
+            embed = discord.Embed(colour=0xffffff)
+
+            embed.title = 'Select Team'
+            embed.description = 'Which team would you like to post an advertisement for?\n'
+
+            options = list()
+
+            for i, team_details in enumerate(teams, 1):
+                embed.description += f'\n`{i}.` {team_details[1]}'
+
+                options.append(discord.SelectOption(label=team_details[1], value=team_details[0]))
+
+            item = LFCTeamSelect(options=options)
+            item.ctx = ctx
+
+            view = discord.ui.View()
+            view.add_item(item)
+
+            await ctx.edit_original_message(embed=embed, view=view)
 
 
 async def setup(bot):

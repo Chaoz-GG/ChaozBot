@@ -462,7 +462,7 @@ Most Played Map:
 
             update_hours(member.id, hours)
 
-            await log_message(ctx, f'{ctx.user} has requested a stats update for `{member}`.')
+            await log_message(ctx, f'`{ctx.user}` has requested a stats update for `{member}`.')
 
             return await ctx.edit_original_message(content=messages["stats_updated"])
 

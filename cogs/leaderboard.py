@@ -57,7 +57,7 @@ class LeaderBoard(commands.Cog):
 
     # Auto-update leaderboard
     @tasks.loop(hours=update_frequency)
-    async def _update_lb(self, channel_id=None):
+    async def update_lb(self, channel_id=None):
         guild = self.bot.get_guild(whitelist)
         channel = guild.get_channel(channel_id or self.lb_channel_id)
 
@@ -217,9 +217,9 @@ class LeaderBoard(commands.Cog):
 
         await ctx.edit_original_message(embed=embed)
 
-    @app_commands.command(name='publish', description='Publish the region-wise leaderboards.')
+    @app_commands.command(name='publish_lb', description='Publish the region-wise leaderboards.')
     @app_commands.guilds(whitelist)
-    async def _publish(self, ctx: discord.Interaction, channel: discord.TextChannel = None):
+    async def _publish_lb(self, ctx: discord.Interaction, channel: discord.TextChannel = None):
         await ctx.response.defer(thinking=True)
 
         await log_message(ctx, f'`{ctx.user}` has used the `{ctx.command.name}` command.')
@@ -237,22 +237,22 @@ class LeaderBoard(commands.Cog):
             return await ctx.edit_original_message(content=messages["admin_only"])
 
         if not channel:
-            await self._update_lb()
+            await self.update_lb()
 
         else:
-            await self._update_lb(channel.id)
+            await self.update_lb(channel.id)
 
         await ctx.edit_original_message(content=messages["leaderboards_published"])
 
-    @commands.Cog.listener()
-    async def on_ready(self):
-        self._update_lb.start()
+    @update_lb.before_loop
+    async def _before_update_lb(self):
+        await self.bot.wait_until_ready()
 
     # Update leaderboards on member leaving
     # noinspection PyUnusedLocal
     @commands.Cog.listener()
     async def on_member_remove(self, member):
-        await self._update_lb()
+        await self.update_lb()
 
 
 async def setup(bot):

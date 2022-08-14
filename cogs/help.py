@@ -72,7 +72,15 @@ class Help(commands.Cog):
                             inline=False)
 
             embed.add_field(name='Profile',
-                            value=f'`forcelink`, `forceunlink`, `forceadd`',
+                            value=f'`forcelink`, `forceunlink`, `forceadd`, `prune_users`',
+                            inline=False)
+
+            embed.add_field(name='Leaderboard',
+                            value=f'`publish_lb`',
+                            inline=False)
+
+            embed.add_field(name='Teams',
+                            value=f'`forceadd`, `publish_teams`',
                             inline=False)
 
             embed.add_field(name='Games',

@@ -15,7 +15,8 @@ from steam.enums import EPersonaState
 from utils.tools import make_list_embed, generate_token, log_message
 from utils.db import get_steam_ids, get_steam_id, already_exists, remove_user, has_generated_token, initiate_auth, \
     cleanup_auth, get_token, add_user, update_birthday, update_timezone, update_bio, get_favorite_games, \
-    update_favorite_games, update_country, update_region, update_hours, get_birthday_bois, get_user
+    update_favorite_games, update_country, update_region, update_hours, get_birthday_bois, get_user, \
+    archive_exists, archive_user, unarchive_user
 
 
 with open('config.json') as json_file:
@@ -537,7 +538,7 @@ class Profile(commands.Cog):
             await ctx.edit_original_message(embed=embed)
 
     @tasks.loop(hours=24)
-    async def _wish_users(self):
+    async def wish_users(self):
         users = get_birthday_bois()
 
         if not users:
@@ -559,9 +560,23 @@ class Profile(commands.Cog):
 
             await birthday_channel.send(messages["birthday_message"].format(user.mention))
 
+    @wish_users.before_loop
+    async def _before_wish_users(self):
+        await self.bot.wait_until_ready()
+
+    # Erase member data on leaving, if exists
     @commands.Cog.listener()
-    async def on_ready(self):
-        self._wish_users.start()
+    async def on_member_remove(self, member):
+        if archive_exists(member.id):
+            unarchive_user(member.id)
+
+    # Erase member data on leaving, if exists
+    @commands.Cog.listener()
+    async def on_member_remove(self, member):
+        if already_exists(member.id):
+            steam_id = get_steam_id(member.id)
+
+            archive_user(member.id, steam_id)
 
 
 async def setup(bot):

@@ -9,7 +9,10 @@ from datetime import datetime
 
 from utils.core import load_cogs
 
-from cogs.teams import Options, Create  # MemberRequest, SubstituteRequest
+from cogs.teams import Options, Create
+from cogs.auto_updater import AutoUpdater
+from cogs.profile import Profile
+from cogs.leaderboard import LeaderBoard
 
 with open('config.json') as json_file:
     data = json.load(json_file)
@@ -29,7 +32,10 @@ class ChaozBot(commands.Bot):
     async def setup_hook(self) -> None:
         self.add_view(Create())
         self.add_view(Options())
-        # self.add_view(Request())
+
+        AutoUpdater.update_stats.start()
+        Profile.wish_users.start()
+        LeaderBoard.update_lb.start()
 
 
 intents = discord.Intents.all()
