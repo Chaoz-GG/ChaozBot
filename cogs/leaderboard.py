@@ -248,6 +248,9 @@ class LeaderBoard(commands.Cog):
     async def _before_update_lb(self):
         await self.bot.wait_until_ready()
 
+    async def cog_load(self):
+        self.update_lb.start()
+
     # Update leaderboards on member leaving
     # noinspection PyUnusedLocal
     @commands.Cog.listener()

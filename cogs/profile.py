@@ -564,9 +564,12 @@ class Profile(commands.Cog):
     async def _before_wish_users(self):
         await self.bot.wait_until_ready()
 
-    # Erase member data on leaving, if exists
+    async def cog_load(self):
+        self.wish_users.start()
+
+    # Retrieve member data on joining, if exists
     @commands.Cog.listener()
-    async def on_member_remove(self, member):
+    async def on_member_join(self, member):
         if archive_exists(member.id):
             unarchive_user(member.id)
 

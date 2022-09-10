@@ -41,7 +41,7 @@ class AutoUpdater(commands.Cog):
                 remove_user(user_id, steam_id)
                 continue
 
-            await log_message(member, f'Auto-updating stats for `{member}`. This may take a while...')
+            # await log_message(member, f'Auto-updating stats for `{member}`. This may take a while...')
 
             async with aiohttp.ClientSession() as session:
                 async with session.get(f'http://localhost:5000/stats/update/mm/{steam_id}'):
@@ -120,6 +120,9 @@ class AutoUpdater(commands.Cog):
     @update_stats.before_loop
     async def _before_update_stats(self):
         await self.bot.wait_until_ready()
+
+    async def cog_load(self):
+        self.update_stats.start()
 
 
 async def setup(bot):
