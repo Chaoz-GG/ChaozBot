@@ -45,7 +45,7 @@ class LFG(ui.Modal, title='Looking For Game'):
 
         # Check if the game type entered is one of the valid types
         if self.game_type.value.lower() not in ['mm', 'faceit', 'wingman', '1v1', 'dz']:
-            await ctx.edit_original_message(content=messages["invalid_game_type"])
+            await ctx.edit_original_response(content=messages["invalid_game_type"])
 
 
 class LFPTeamSelect(discord.ui.Select):
@@ -88,7 +88,7 @@ class LFPTeamSelect(discord.ui.Select):
 
         await channel.send(embed=embed)
 
-        await self.ctx.edit_original_message(content=messages["ad_posted"].format(channel.mention),
+        await self.ctx.edit_original_response(content=messages["ad_posted"].format(channel.mention),
                                              embed=None, view=None)
 
 
@@ -137,7 +137,7 @@ class LFCTeamSelect(discord.ui.Select):
 
         await channel.send(embed=embed)
 
-        await self.ctx.edit_original_message(content=messages["ad_posted"].format(channel.mention),
+        await self.ctx.edit_original_response(content=messages["ad_posted"].format(channel.mention),
                                              embed=None, view=None)
 
 
@@ -228,7 +228,7 @@ class LookingFor(commands.Cog):
 
         # Check if the user has already linked his profile
         if not already_exists(ctx.user.id):
-            return await ctx.edit_original_message(content=messages["profile_not_linked"])
+            return await ctx.edit_original_response(content=messages["profile_not_linked"])
 
         modal = LFG()
         await ctx.response.send_modal(modal)
@@ -264,7 +264,7 @@ class LookingFor(commands.Cog):
                     stats = await stats.json()
 
                     if "error" in stats.keys():
-                        return await ctx.edit_original_message(content=messages["mm_stats_not_found"])
+                        return await ctx.edit_original_response(content=messages["mm_stats_not_found"])
 
             else:
                 async with session.get(f'http://localhost:5000/stats/view/faceit/{steam_id}') as stats:
@@ -272,7 +272,7 @@ class LookingFor(commands.Cog):
                     stats = await stats.json()
 
                     if "error" in stats.keys():
-                        return await ctx.edit_original_message(content=messages["faceit_stats_not_found"])
+                        return await ctx.edit_original_response(content=messages["faceit_stats_not_found"])
 
         # Fetch the user's Steam profile instance
         # noinspection PyUnresolvedReferences
@@ -491,7 +491,7 @@ Most Played Map:
 
         await channel.send(embed=embed, file=file)
 
-        await ctx.edit_original_message(content=messages["ad_posted"].format(channel.mention))
+        await ctx.edit_original_response(content=messages["ad_posted"].format(channel.mention))
 
     @app_commands.command(name='lfp', description='Send a looking-for-player advertisement.')
     @app_commands.guilds(whitelist)
@@ -504,7 +504,7 @@ Most Played Map:
         teams = get_teams_by_captain_id(ctx.user.id)
 
         if not teams:
-            return await ctx.edit_original_message(content=messages["no_captain"])
+            return await ctx.edit_original_response(content=messages["no_captain"])
 
         embed = discord.Embed(colour=0xffffff)
 
@@ -525,7 +525,7 @@ Most Played Map:
         view = discord.ui.View()
         view.add_item(item)
 
-        await ctx.edit_original_message(embed=embed, view=view)
+        await ctx.edit_original_response(embed=embed, view=view)
 
     @app_commands.command(name='lft', description='Send a looking-for-team advertisement.')
     @app_commands.guilds(whitelist)
@@ -534,7 +534,7 @@ Most Played Map:
 
         # Check if the user has linked his profile with the bot first
         if not already_exists(ctx.user.id):
-            return await ctx.edit_original_message(content=messages["profile_not_linked"])
+            return await ctx.edit_original_response(content=messages["profile_not_linked"])
 
         modal = LFT()
         await ctx.response.send_modal(modal)
@@ -574,7 +574,7 @@ Most Played Map:
 
         await channel.send(embed=embed)
 
-        await ctx.edit_original_message(content=messages["ad_posted"].format(channel.mention))
+        await ctx.edit_original_response(content=messages["ad_posted"].format(channel.mention))
 
     @app_commands.command(name='lfc', description='Send a looking-for-coach advertisement.')
     @app_commands.choices(seeker=[
@@ -622,7 +622,7 @@ Most Played Map:
 
             await channel.send(embed=embed)
 
-            await ctx.edit_original_message(content=messages["ad_posted"].format(channel.mention))
+            await ctx.edit_original_response(content=messages["ad_posted"].format(channel.mention))
 
         else:
             await ctx.response.defer(thinking=True)
@@ -631,7 +631,7 @@ Most Played Map:
             teams = get_teams_by_captain_id(ctx.user.id)
 
             if not teams:
-                return await ctx.edit_original_message(content=messages["no_captain"])
+                return await ctx.edit_original_response(content=messages["no_captain"])
 
             embed = discord.Embed(colour=0xffffff)
 
@@ -652,7 +652,7 @@ Most Played Map:
             view = discord.ui.View()
             view.add_item(item)
 
-            await ctx.edit_original_message(embed=embed, view=view)
+            await ctx.edit_original_response(embed=embed, view=view)
 
 
 async def setup(bot):

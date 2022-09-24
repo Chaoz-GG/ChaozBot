@@ -40,7 +40,7 @@ class General(commands.Cog):
 
         t1 = datetime.utcnow().strftime("%f")
 
-        await ctx.edit_original_message(embed=embed)
+        await ctx.edit_original_response(embed=embed)
 
         t2 = datetime.utcnow().strftime("%f")
 
@@ -49,7 +49,7 @@ class General(commands.Cog):
 
         embed.add_field(name='Bot latency (Round-trip)', value=f'`{diff} ms`')
 
-        await ctx.edit_original_message(embed=embed)
+        await ctx.edit_original_response(embed=embed)
 
 
 async def setup(bot):

@@ -87,7 +87,7 @@ class Help(commands.Cog):
                             value=f'`addgame`, `editgame`, `removegame`, `gamelogo`',
                             inline=False)
 
-        await ctx.edit_original_message(embed=embed)
+        await ctx.edit_original_response(embed=embed)
 
 
 async def setup(bot):

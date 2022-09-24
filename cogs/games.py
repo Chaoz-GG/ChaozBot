@@ -64,7 +64,7 @@ class Add(ui.Modal, title='Add Game'):
 
         await log_message(ctx, f'The game `{self.name.value}` has been added by `{ctx.user}`.')
 
-        return await ctx.edit_original_message(content=messages["add_game_success"])
+        return await ctx.edit_original_response(content=messages["add_game_success"])
 
 
 # Form for editing an existing game
@@ -106,7 +106,7 @@ class Edit(ui.Modal, title='Edit Team'):
 
         await log_message(self.ctx, f'Game `{game[0]}` has been updated by `{self.ctx.user}`.')
 
-        return await self.ctx.edit_original_message(content=messages["game_updated"], embed=None, view=None)
+        return await self.ctx.edit_original_response(content=messages["game_updated"], embed=None, view=None)
 
 
 class GameInfoSelect(discord.ui.Select):
@@ -134,7 +134,7 @@ class GameInfoSelect(discord.ui.Select):
         view = discord.ui.View()
         view.add_item(discord.ui.Button(label='Read More', url=_game[3]))
 
-        await self.ctx.edit_original_message(embed=embed, view=view)
+        await self.ctx.edit_original_response(embed=embed, view=view)
 
 
 class RemoveGameSelect(discord.ui.Select):
@@ -147,7 +147,7 @@ class RemoveGameSelect(discord.ui.Select):
     async def callback(self, ctx: discord.Interaction):
         await ctx.response.defer()
 
-        await self.ctx.edit_original_message(content='Processing ...', embed=None, view=None)
+        await self.ctx.edit_original_response(content='Processing ...', embed=None, view=None)
 
         # Load existing game data
         with open('data/games.json') as f:
@@ -195,7 +195,7 @@ class RemoveGameSelect(discord.ui.Select):
 
         await log_message(self.ctx, f'The game `{game_name}` has been removed by `{self.ctx.user}`.')
 
-        return await self.ctx.edit_original_message(content=messages["game_removed"], embed=None, view=None)
+        return await self.ctx.edit_original_response(content=messages["game_removed"], embed=None, view=None)
 
 
 class GameLogoSelect(discord.ui.Select):
@@ -209,7 +209,7 @@ class GameLogoSelect(discord.ui.Select):
     async def callback(self, ctx: discord.Interaction):
         await ctx.response.defer()
 
-        await self.ctx.edit_original_message(content='Updating logo ...', embed=None, view=None)
+        await self.ctx.edit_original_response(content='Updating logo ...', embed=None, view=None)
 
         # Create SFTP connection to our server
         key = paramiko.RSAKey.from_private_key_file(sftp_pvt_key, password=sftp_pvt_key_password)
@@ -226,7 +226,7 @@ class GameLogoSelect(discord.ui.Select):
 
         await log_message(self.ctx, f'The logo for `{self.values[0]}` has been updated by `{self.ctx.user}`.')
 
-        await self.ctx.edit_original_message(content=messages["game_logo_updated"], embed=None, view=None)
+        await self.ctx.edit_original_response(content=messages["game_logo_updated"], embed=None, view=None)
 
 
 class GameEditSelect(discord.ui.Select):
@@ -279,7 +279,7 @@ class Games(commands.Cog):
         view = discord.ui.View()
         view.add_item(item)
 
-        await ctx.edit_original_message(embed=embed, view=view)
+        await ctx.edit_original_response(embed=embed, view=view)
 
     @app_commands.command(name='gamelogo', description='Upload game logo.')
     @app_commands.guilds(whitelist)
@@ -299,7 +299,7 @@ class Games(commands.Cog):
                 break
 
         else:
-            return await ctx.edit_original_message(content=messages["admin_only"])
+            return await ctx.edit_original_response(content=messages["admin_only"])
 
         # Read the logo bytes from the uploaded image file
         _logo = io.BytesIO(await logo.read())
@@ -329,7 +329,7 @@ class Games(commands.Cog):
         view = discord.ui.View()
         view.add_item(item)
 
-        await ctx.edit_original_message(embed=embed, view=view)
+        await ctx.edit_original_response(embed=embed, view=view)
 
     @app_commands.command(name='addgame', description='Add a game to the games list. Admin only!')
     @app_commands.guilds(whitelist)
@@ -347,7 +347,7 @@ class Games(commands.Cog):
                 break
 
         else:
-            return await ctx.edit_original_message(content=messages["admin_only"])
+            return await ctx.edit_original_response(content=messages["admin_only"])
 
         modal = Add()
         await ctx.response.send_modal(modal)
@@ -371,7 +371,7 @@ class Games(commands.Cog):
                 break
 
         else:
-            return await ctx.edit_original_message(content=messages["admin_only"])
+            return await ctx.edit_original_response(content=messages["admin_only"])
 
         embed = discord.Embed(colour=self.bot.embed_colour)
 
@@ -397,7 +397,7 @@ class Games(commands.Cog):
         view = discord.ui.View()
         view.add_item(item)
 
-        await ctx.edit_original_message(embed=embed, view=view)
+        await ctx.edit_original_response(embed=embed, view=view)
 
     @app_commands.command(name='removegame', description='Remove a game from games list. Admin only!')
     @app_commands.guilds(whitelist)
@@ -417,7 +417,7 @@ class Games(commands.Cog):
                 break
 
         else:
-            return await ctx.edit_original_message(content=messages["admin_only"])
+            return await ctx.edit_original_response(content=messages["admin_only"])
 
         embed = discord.Embed(colour=self.bot.embed_colour)
 
@@ -443,7 +443,7 @@ class Games(commands.Cog):
         view = discord.ui.View()
         view.add_item(item)
 
-        await ctx.edit_original_message(embed=embed, view=view)
+        await ctx.edit_original_response(embed=embed, view=view)
 
 
 async def setup(bot):
