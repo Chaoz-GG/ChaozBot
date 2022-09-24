@@ -1,4 +1,3 @@
-#!/usr/bin/python3
 import datetime
 import json
 
@@ -13,6 +12,7 @@ with open('config.json') as json_file:
     db_port = data['db_port']
 
 
+# Fetch all the user IDs from the `users` table and check if the parsed ID is in the list or not
 def already_exists(user_id: int):
     db = mysql.connector.connect(host=db_host, port=db_port, user=db_user,
                                  passwd=db_password, database=db_name)
@@ -31,6 +31,7 @@ def already_exists(user_id: int):
     return False
 
 
+# Fetch all the user IDs from the `users_archive` table and check if the parsed ID is in the list or not
 def archive_exists(user_id: int):
     db = mysql.connector.connect(host=db_host, port=db_port, user=db_user,
                                  passwd=db_password, database=db_name)
@@ -49,6 +50,7 @@ def archive_exists(user_id: int):
     return False
 
 
+# Fetch all the users with the given region, favorite game and age requirements
 def get_all_users(region: str = None, favorite_game: str = None, age: int = None):
     db = mysql.connector.connect(host=db_host, port=db_port, user=db_user,
                                  passwd=db_password, database=db_name)
@@ -100,6 +102,7 @@ def get_all_users(region: str = None, favorite_game: str = None, age: int = None
     return res
 
 
+# Fetch the users whose birthday is today
 def get_birthday_bois():
     db = mysql.connector.connect(host=db_host, port=db_port, user=db_user,
                                  passwd=db_password, database=db_name)
@@ -116,13 +119,14 @@ def get_birthday_bois():
     return res
 
 
+# Fetch all the information about a user from the `users` table
 def get_user(user_id: int):
     db = mysql.connector.connect(host=db_host, port=db_port, user=db_user,
                                  passwd=db_password, database=db_name)
     cursor = db.cursor(buffered=True)
 
     # noinspection SqlDialectInspection, SqlNoDataSourceInspection
-    cursor.execute('select * from users where USER_ID = %s;', (user_id, ))
+    cursor.execute('select * from users where USER_ID = %s;', (user_id,))
 
     r = cursor.fetchone()
 
@@ -144,13 +148,14 @@ def get_user(user_id: int):
     return res
 
 
+# Fetch the Steam ID of a user from their Discord ID
 def get_steam_id(user_id: int):
     db = mysql.connector.connect(host=db_host, port=db_port, user=db_user,
                                  passwd=db_password, database=db_name)
     cursor = db.cursor(buffered=True)
 
     # noinspection SqlDialectInspection, SqlNoDataSourceInspection
-    cursor.execute('select STEAM_ID from users where USER_ID = %s;', (user_id, ))
+    cursor.execute('select STEAM_ID from users where USER_ID = %s;', (user_id,))
 
     res = cursor.fetchone()[0]
 
@@ -160,13 +165,14 @@ def get_steam_id(user_id: int):
     return res
 
 
+# Fetch the Discord ID of a user from their Steam ID
 def get_user_id(steam_id: int):
     db = mysql.connector.connect(host=db_host, port=db_port, user=db_user,
                                  passwd=db_password, database=db_name)
     cursor = db.cursor(buffered=True)
 
     # noinspection SqlDialectInspection, SqlNoDataSourceInspection
-    cursor.execute('select USER_ID from users where STEAM_ID = %s;', (steam_id, ))
+    cursor.execute('select USER_ID from users where STEAM_ID = %s;', (steam_id,))
 
     res = cursor.fetchone()[0]
 
@@ -176,6 +182,7 @@ def get_user_id(steam_id: int):
     return res
 
 
+# Fetch all the Steam IDs of all the users in the `users` table
 def get_steam_ids():
     db = mysql.connector.connect(host=db_host, port=db_port, user=db_user,
                                  passwd=db_password, database=db_name)
@@ -195,6 +202,7 @@ def get_steam_ids():
     return res
 
 
+# Check if a user has a generated verification token in the `authentication` table
 def has_generated_token(user_id: int):
     db = mysql.connector.connect(host=db_host, port=db_port, user=db_user,
                                  passwd=db_password, database=db_name)
@@ -213,6 +221,7 @@ def has_generated_token(user_id: int):
     return False
 
 
+# Insert the verification token for the user into the `authentication` table
 def initiate_auth(user_id: int, token: str):
     db = mysql.connector.connect(host=db_host, port=db_port, user=db_user,
                                  passwd=db_password, database=db_name)
@@ -226,26 +235,28 @@ def initiate_auth(user_id: int, token: str):
     db.close()
 
 
+# Remove the authentication token for the user from the `authentication` table after successful verification
 def cleanup_auth(user_id: int):
     db = mysql.connector.connect(host=db_host, port=db_port, user=db_user,
                                  passwd=db_password, database=db_name)
     cursor = db.cursor(buffered=True)
 
     # noinspection SqlDialectInspection,SqlNoDataSourceInspection
-    cursor.execute('delete from authentication where USER_ID = %s;', (user_id, ))
+    cursor.execute('delete from authentication where USER_ID = %s;', (user_id,))
     db.commit()
 
     cursor.close()
     db.close()
 
 
+# Fetch the authentication token for a user from the `authentication` table
 def get_token(user_id: int):
     db = mysql.connector.connect(host=db_host, port=db_port, user=db_user,
                                  passwd=db_password, database=db_name)
     cursor = db.cursor(buffered=True)
 
     # noinspection SqlDialectInspection, SqlNoDataSourceInspection
-    cursor.execute('select TOKEN from authentication where USER_ID = %s;', (user_id, ))
+    cursor.execute('select TOKEN from authentication where USER_ID = %s;', (user_id,))
 
     res = cursor.fetchone()[0]
 
@@ -255,6 +266,7 @@ def get_token(user_id: int):
     return res
 
 
+# Insert a user to the `users` table
 def add_user(user_id: int, steam_id: int):
     db = mysql.connector.connect(host=db_host, port=db_port, user=db_user,
                                  passwd=db_password, database=db_name)
@@ -268,6 +280,7 @@ def add_user(user_id: int, steam_id: int):
     db.close()
 
 
+# Delete a user from the `users` table
 def remove_user(user_id: int, steam_id: int):
     db = mysql.connector.connect(host=db_host, port=db_port, user=db_user,
                                  passwd=db_password, database=db_name)
@@ -288,6 +301,7 @@ def remove_user(user_id: int, steam_id: int):
     db.close()
 
 
+# Delete a user from the `users` table and insert their entry into the `users_archive` table
 def archive_user(user_id: int, steam_id: int):
     db = mysql.connector.connect(host=db_host, port=db_port, user=db_user,
                                  passwd=db_password, database=db_name)
@@ -300,10 +314,10 @@ def archive_user(user_id: int, steam_id: int):
     cursor.execute('delete from users where USER_ID = %s;', (user_id,))
 
     # noinspection SqlDialectInspection,SqlNoDataSourceInspection
-    cursor.execute('delete from mm_stats where STEAM_ID = %s;', (steam_id, ))
+    cursor.execute('delete from mm_stats where STEAM_ID = %s;', (steam_id,))
 
     # noinspection SqlDialectInspection,SqlNoDataSourceInspection
-    cursor.execute('delete from faceit_stats where STEAM_ID = %s;', (steam_id, ))
+    cursor.execute('delete from faceit_stats where STEAM_ID = %s;', (steam_id,))
 
     db.commit()
 
@@ -311,6 +325,7 @@ def archive_user(user_id: int, steam_id: int):
     db.close()
 
 
+# Delete a user entry from the `users_archive` table
 def unarchive_user(user_id: int):
     db = mysql.connector.connect(host=db_host, port=db_port, user=db_user,
                                  passwd=db_password, database=db_name)
@@ -328,13 +343,14 @@ def unarchive_user(user_id: int):
     db.close()
 
 
+# Fetch the user's bio from the `users` table
 def get_bio(user_id: int):
     db = mysql.connector.connect(host=db_host, port=db_port, user=db_user,
                                  passwd=db_password, database=db_name)
     cursor = db.cursor(buffered=True)
 
     # noinspection SqlDialectInspection, SqlNoDataSourceInspection
-    cursor.execute('select BIO from users where USER_ID = %s;', (user_id, ))
+    cursor.execute('select BIO from users where USER_ID = %s;', (user_id,))
 
     res = cursor.fetchone()[0]
 
@@ -344,6 +360,7 @@ def get_bio(user_id: int):
     return res
 
 
+# Update the user's birthdate in the `users` table
 def update_birthday(user_id: int, birthday: datetime.date):
     db = mysql.connector.connect(host=db_host, port=db_port, user=db_user,
                                  passwd=db_password, database=db_name)
@@ -357,6 +374,7 @@ def update_birthday(user_id: int, birthday: datetime.date):
     db.close()
 
 
+# Update the user's timezone in the `users` table
 def update_timezone(user_id: int, timezone: str):
     db = mysql.connector.connect(host=db_host, port=db_port, user=db_user,
                                  passwd=db_password, database=db_name)
@@ -370,6 +388,7 @@ def update_timezone(user_id: int, timezone: str):
     db.close()
 
 
+# Update the user's bio in the `users` table
 def update_bio(user_id: int, bio: str):
     db = mysql.connector.connect(host=db_host, port=db_port, user=db_user,
                                  passwd=db_password, database=db_name)
@@ -383,13 +402,14 @@ def update_bio(user_id: int, bio: str):
     db.close()
 
 
+# Return the favorite games of the user from the `users` table as a list
 def get_favorite_games(user_id: int):
     db = mysql.connector.connect(host=db_host, port=db_port, user=db_user,
                                  passwd=db_password, database=db_name)
     cursor = db.cursor(buffered=True)
 
     # noinspection SqlDialectInspection,SqlNoDataSourceInspection
-    cursor.execute('select FAVORITE_GAMES from users where USER_ID = %s;', (user_id, ))
+    cursor.execute('select FAVORITE_GAMES from users where USER_ID = %s;', (user_id,))
 
     res = cursor.fetchone()[0]
 
@@ -403,6 +423,7 @@ def get_favorite_games(user_id: int):
         return res.split('|')
 
 
+# Update the user's favorite games in the `users` table
 def update_favorite_games(user_id: int, favorite_game: str):
     db = mysql.connector.connect(host=db_host, port=db_port, user=db_user,
                                  passwd=db_password, database=db_name)
@@ -416,13 +437,14 @@ def update_favorite_games(user_id: int, favorite_game: str):
     db.close()
 
 
+# Fetch the user's country name from the `users` table
 def get_country(user_id: int):
     db = mysql.connector.connect(host=db_host, port=db_port, user=db_user,
                                  passwd=db_password, database=db_name)
     cursor = db.cursor(buffered=True)
 
     # noinspection SqlDialectInspection, SqlNoDataSourceInspection
-    cursor.execute('select COUNTRY from users where USER_ID = %s;', (user_id, ))
+    cursor.execute('select COUNTRY from users where USER_ID = %s;', (user_id,))
 
     res = cursor.fetchone()[0]
 
@@ -432,6 +454,7 @@ def get_country(user_id: int):
     return res
 
 
+# Update the user's country name in the `users` table
 def update_country(user_id: int, country: str):
     db = mysql.connector.connect(host=db_host, port=db_port, user=db_user,
                                  passwd=db_password, database=db_name)
@@ -445,13 +468,14 @@ def update_country(user_id: int, country: str):
     db.close()
 
 
+# Fetch the user's region from the `users` table
 def get_region(user_id: int):
     db = mysql.connector.connect(host=db_host, port=db_port, user=db_user,
                                  passwd=db_password, database=db_name)
     cursor = db.cursor(buffered=True)
 
     # noinspection SqlDialectInspection, SqlNoDataSourceInspection
-    cursor.execute('select REGION from users where USER_ID = %s;', (user_id, ))
+    cursor.execute('select REGION from users where USER_ID = %s;', (user_id,))
 
     res = cursor.fetchone()[0]
 
@@ -461,6 +485,7 @@ def get_region(user_id: int):
     return res
 
 
+# Update the user's region in the `users` table
 def update_region(user_id: int, region: str):
     db = mysql.connector.connect(host=db_host, port=db_port, user=db_user,
                                  passwd=db_password, database=db_name)
@@ -474,13 +499,14 @@ def update_region(user_id: int, region: str):
     db.close()
 
 
+# Fetch the user's total playtime from the `users` table
 def get_hours(user_id: int):
     db = mysql.connector.connect(host=db_host, port=db_port, user=db_user,
                                  passwd=db_password, database=db_name)
     cursor = db.cursor(buffered=True)
 
     # noinspection SqlDialectInspection, SqlNoDataSourceInspection
-    cursor.execute('select HOURS from users where USER_ID = %s;', (user_id, ))
+    cursor.execute('select HOURS from users where USER_ID = %s;', (user_id,))
 
     res = cursor.fetchone()[0]
 
@@ -490,22 +516,7 @@ def get_hours(user_id: int):
     return res
 
 
-def get_all_hours():
-    db = mysql.connector.connect(host=db_host, port=db_port, user=db_user,
-                                 passwd=db_password, database=db_name)
-    cursor = db.cursor(buffered=True)
-
-    # noinspection SqlDialectInspection, SqlNoDataSourceInspection
-    cursor.execute('select SUM(HOURS) from users;')
-
-    res = cursor.fetchone()[0]
-
-    cursor.close()
-    db.close()
-
-    return res
-
-
+# Update the user's total playtime in the `users` table
 def update_hours(user_id: int, hours: int):
     db = mysql.connector.connect(host=db_host, port=db_port, user=db_user,
                                  passwd=db_password, database=db_name)
@@ -519,6 +530,7 @@ def update_hours(user_id: int, hours: int):
     db.close()
 
 
+# Fetch the region-wise leaderboard using optional matchmaking and FaceIT rank requirements
 def sort_lb(region: str, mm_rank: str = None, faceit_rank: int = None):
     db = mysql.connector.connect(host=db_host, port=db_port, user=db_user,
                                  passwd=db_password, database=db_name)
@@ -542,7 +554,7 @@ def sort_lb(region: str, mm_rank: str = None, faceit_rank: int = None):
                        'faceit_stats, users where users.REGION = %s and mm_stats.STEAM_ID = users.STEAM_ID '
                        'and faceit_stats.STEAM_ID = users.STEAM_ID order by faceit_stats.RANK, '
                        'mm_stats.KPD, faceit_stats.KPD desc;',
-                       (region, ))
+                       (region,))
 
     res = cursor.fetchall()
 
@@ -552,6 +564,7 @@ def sort_lb(region: str, mm_rank: str = None, faceit_rank: int = None):
     return res
 
 
+# Fetch all the team names from the `teams` table
 def get_all_team_names():
     db = mysql.connector.connect(host=db_host, port=db_port, user=db_user,
                                  passwd=db_password, database=db_name)
@@ -573,6 +586,7 @@ def get_all_team_names():
     return res
 
 
+# Fetch all the team abbreviations from the `teams` table
 def get_all_team_abbreviations():
     db = mysql.connector.connect(host=db_host, port=db_port, user=db_user,
                                  passwd=db_password, database=db_name)
@@ -594,6 +608,7 @@ def get_all_team_abbreviations():
     return res
 
 
+# Fetch the team ID, games and active game from the `teams` table
 def get_all_teams_and_games():
     db = mysql.connector.connect(host=db_host, port=db_port, user=db_user,
                                  passwd=db_password, database=db_name)
@@ -610,6 +625,7 @@ def get_all_teams_and_games():
     return r
 
 
+# Insert a team into the `teams` table
 def create_team(team_id: str, games: str, active_game: str, name: str, abbreviation: str, region: str,
                 captain_steam_id: int, captain_discord_id: int, description: str = None, org_name: str = None):
     db = mysql.connector.connect(host=db_host, port=db_port, user=db_user,
@@ -627,6 +643,7 @@ def create_team(team_id: str, games: str, active_game: str, name: str, abbreviat
     db.close()
 
 
+# Update the team's message ID in the `teams` table
 def update_team_message_id(team_id: str, message_id: int):
     db = mysql.connector.connect(host=db_host, port=db_port, user=db_user,
                                  passwd=db_password, database=db_name)
@@ -640,6 +657,7 @@ def update_team_message_id(team_id: str, message_id: int):
     db.close()
 
 
+# Update the team's games in the `teams` table
 def update_team_games(team_id: str, games: str):
     db = mysql.connector.connect(host=db_host, port=db_port, user=db_user,
                                  passwd=db_password, database=db_name)
@@ -653,6 +671,7 @@ def update_team_games(team_id: str, games: str):
     db.close()
 
 
+# Update the team's active game in the `teams` table
 def update_team_active_game(team_id: str, active_game: str):
     db = mysql.connector.connect(host=db_host, port=db_port, user=db_user,
                                  passwd=db_password, database=db_name)
@@ -666,6 +685,7 @@ def update_team_active_game(team_id: str, active_game: str):
     db.close()
 
 
+# Update the team's region in the `teams` table
 def update_team_region(team_id: str, region: str):
     db = mysql.connector.connect(host=db_host, port=db_port, user=db_user,
                                  passwd=db_password, database=db_name)
@@ -679,6 +699,7 @@ def update_team_region(team_id: str, region: str):
     db.close()
 
 
+# Update the team's description in the `teams` table
 def update_team_description(team_id: str, description: str):
     db = mysql.connector.connect(host=db_host, port=db_port, user=db_user,
                                  passwd=db_password, database=db_name)
@@ -692,6 +713,7 @@ def update_team_description(team_id: str, description: str):
     db.close()
 
 
+# Update the team's organization name in the `teams` table
 def update_team_org_name(team_id: str, org_name: str):
     db = mysql.connector.connect(host=db_host, port=db_port, user=db_user,
                                  passwd=db_password, database=db_name)
@@ -705,6 +727,7 @@ def update_team_org_name(team_id: str, org_name: str):
     db.close()
 
 
+# Fetch all the information about a team from the `teams` table by team ID
 def get_team_by_id(team_id: str):
     db = mysql.connector.connect(host=db_host, port=db_port, user=db_user,
                                  passwd=db_password, database=db_name)
@@ -742,6 +765,7 @@ def get_team_by_id(team_id: str):
     return res
 
 
+# Fetch all the information about a team from the `teams` table by message ID
 def get_team_by_message_id(message_id: int):
     db = mysql.connector.connect(host=db_host, port=db_port, user=db_user,
                                  passwd=db_password, database=db_name)
@@ -776,6 +800,7 @@ def get_team_by_message_id(message_id: int):
     return res
 
 
+# Fetch all the information about a team from the `teams` table by captain's user ID
 def get_teams_by_captain_id(captain_discord_id: int):
     db = mysql.connector.connect(host=db_host, port=db_port, user=db_user,
                                  passwd=db_password, database=db_name)
@@ -797,6 +822,7 @@ def get_teams_by_captain_id(captain_discord_id: int):
     return r
 
 
+# Fetch the member information about a team from the `teams` table by team ID
 def get_team_members(team_id: str):
     db = mysql.connector.connect(host=db_host, port=db_port, user=db_user,
                                  passwd=db_password, database=db_name)
@@ -821,6 +847,7 @@ def get_team_members(team_id: str):
     return member_data
 
 
+# Fetch the substitute information about a team from the `teams` table by team ID
 def get_team_substitutes(team_id: str):
     db = mysql.connector.connect(host=db_host, port=db_port, user=db_user,
                                  passwd=db_password, database=db_name)
@@ -845,6 +872,7 @@ def get_team_substitutes(team_id: str):
     return substitute_data
 
 
+# Check if a team is full using the parsed maximum member count
 def check_team_members_full(team_id: str, max_member_count: int):
     if max_member_count < 0:
         return False
@@ -861,6 +889,7 @@ def check_team_members_full(team_id: str, max_member_count: int):
     return len(r.split('|')) >= max_member_count
 
 
+# Check if a team is full using the parsed maximum substitute count
 def check_team_subsitutes_full(team_id: str, max_substitute_count: int):
     if max_substitute_count < 0:
         return False
@@ -877,6 +906,7 @@ def check_team_subsitutes_full(team_id: str, max_substitute_count: int):
     return len(r.split('|')) >= max_substitute_count
 
 
+# Check if the parsed steam ID is already a member in the team
 def check_team_member_exists(team_id: str, member_steam_id: int):
     db = mysql.connector.connect(host=db_host, port=db_port, user=db_user,
                                  passwd=db_password, database=db_name)
@@ -890,6 +920,7 @@ def check_team_member_exists(team_id: str, member_steam_id: int):
     return str(member_steam_id) in r.split('|')
 
 
+# Check if the parsed steam ID is already a substitute in the team
 def check_team_substitute_exists(team_id: str, substitute_steam_id: int):
     db = mysql.connector.connect(host=db_host, port=db_port, user=db_user,
                                  passwd=db_password, database=db_name)
@@ -903,6 +934,7 @@ def check_team_substitute_exists(team_id: str, substitute_steam_id: int):
     return str(substitute_steam_id) in r.split('|')
 
 
+# Insert a member into a particular team ID in the `teams` table
 def add_team_member(team_id: str, member_steam_id: int, member_discord_id: int):
     db = mysql.connector.connect(host=db_host, port=db_port, user=db_user,
                                  passwd=db_password, database=db_name)
@@ -928,6 +960,7 @@ def add_team_member(team_id: str, member_steam_id: int, member_discord_id: int):
     db.close()
 
 
+# Delete a member from a particular team ID in the `teams` table
 def remove_team_member(team_id: str, member_steam_id: str):
     db = mysql.connector.connect(host=db_host, port=db_port, user=db_user,
                                  passwd=db_password, database=db_name)
@@ -953,12 +986,13 @@ def remove_team_member(team_id: str, member_steam_id: str):
     db.close()
 
 
+# Insert a substitute into a particular team ID in the `teams` table
 def add_team_substitute(team_id: str, substitute_steam_id: int, substitute_discord_id: int):
     db = mysql.connector.connect(host=db_host, port=db_port, user=db_user,
                                  passwd=db_password, database=db_name)
     cursor = db.cursor(buffered=True)
 
-    substitutes = get_team_substitutes(team_id)    
+    substitutes = get_team_substitutes(team_id)
     substitutes[substitute_steam_id] = substitute_discord_id
 
     substitute_keys = [str(i) for i in list(substitutes.keys())]
@@ -970,7 +1004,7 @@ def add_team_substitute(team_id: str, substitute_steam_id: int, substitute_disco
     # noinspection SqlDialectInspection,SqlNoDataSourceInspection
     cursor.execute('update teams set SUBSTITUTES_STEAM_IDS = %s where TEAM_ID = %s;', (substitute_steam_ids, team_id))
     # noinspection SqlDialectInspection,SqlNoDataSourceInspection
-    cursor.execute('update teams set SUBSTITUTES_DISCORD_IDS = %s where TEAM_ID = %s;', 
+    cursor.execute('update teams set SUBSTITUTES_DISCORD_IDS = %s where TEAM_ID = %s;',
                    (substitute_discord_ids, team_id))
 
     db.commit()
@@ -979,6 +1013,7 @@ def add_team_substitute(team_id: str, substitute_steam_id: int, substitute_disco
     db.close()
 
 
+# Delete a substitute from a particular team ID in the `teams` table
 def remove_team_substitute(team_id: str, substitute_steam_id: str):
     db = mysql.connector.connect(host=db_host, port=db_port, user=db_user,
                                  passwd=db_password, database=db_name)
@@ -1005,13 +1040,14 @@ def remove_team_substitute(team_id: str, substitute_steam_id: str):
     db.close()
 
 
+# Delete a team from the `teams` table
 def remove_team(team_id: str):
     db = mysql.connector.connect(host=db_host, port=db_port, user=db_user,
                                  passwd=db_password, database=db_name)
     cursor = db.cursor(buffered=True)
 
     # noinspection SqlDialectInspection,SqlNoDataSourceInspection
-    cursor.execute('delete from teams where TEAM_ID = %s;', (team_id, ))
+    cursor.execute('delete from teams where TEAM_ID = %s;', (team_id,))
 
     db.commit()
 
@@ -1019,6 +1055,7 @@ def remove_team(team_id: str):
     db.close()
 
 
+# Fetch all the requested members of a particular team from the `teams` table by team ID
 def get_team_requested_members(team_id: str):
     db = mysql.connector.connect(host=db_host, port=db_port, user=db_user,
                                  passwd=db_password, database=db_name)
@@ -1040,6 +1077,7 @@ def get_team_requested_members(team_id: str):
     return member_discord_ids
 
 
+# Fetch all the requested substitutes of a particular team from the `teams` table by team ID
 def get_team_requested_substitutes(team_id: str):
     db = mysql.connector.connect(host=db_host, port=db_port, user=db_user,
                                  passwd=db_password, database=db_name)
@@ -1061,6 +1099,7 @@ def get_team_requested_substitutes(team_id: str):
     return substitutes_discord_ids
 
 
+# Fetch all the blacklisted members of a particular team from the `teams` table by team ID
 def get_team_blacklist(team_id: str):
     db = mysql.connector.connect(host=db_host, port=db_port, user=db_user,
                                  passwd=db_password, database=db_name)
@@ -1082,6 +1121,7 @@ def get_team_blacklist(team_id: str):
     return blacklist_discord_ids
 
 
+# Insert a member into the requested members of a particular team in the `teams` table by team ID
 def add_team_requested_member(team_id: str, member_discord_id: int):
     db = mysql.connector.connect(host=db_host, port=db_port, user=db_user,
                                  passwd=db_password, database=db_name)
@@ -1094,13 +1134,14 @@ def add_team_requested_member(team_id: str, member_discord_id: int):
 
     # noinspection SqlDialectInspection,SqlNoDataSourceInspection
     cursor.execute('update teams set REQUESTED_MEMBERS = %s where TEAM_ID = %s;', (member_discord_ids, team_id))
-    
+
     db.commit()
 
     cursor.close()
     db.close()
 
 
+# Delete a member from the requested members of a particular team in the `teams` table by team ID
 def remove_team_requested_member(team_id: str, member_discord_id: str):
     db = mysql.connector.connect(host=db_host, port=db_port, user=db_user,
                                  passwd=db_password, database=db_name)
@@ -1120,6 +1161,7 @@ def remove_team_requested_member(team_id: str, member_discord_id: str):
     db.close()
 
 
+# Insert a substitute into the requested substitutes of a particular team in the `teams` table by team ID
 def add_team_requested_substitute(team_id: str, substitute_discord_id: int):
     db = mysql.connector.connect(host=db_host, port=db_port, user=db_user,
                                  passwd=db_password, database=db_name)
@@ -1139,6 +1181,7 @@ def add_team_requested_substitute(team_id: str, substitute_discord_id: int):
     db.close()
 
 
+# Delete a substitute from the requested substitutes of a particular team in the `teams` table by team ID
 def remove_team_requested_substitute(team_id: str, substitute_discord_id: str):
     db = mysql.connector.connect(host=db_host, port=db_port, user=db_user,
                                  passwd=db_password, database=db_name)
@@ -1157,7 +1200,8 @@ def remove_team_requested_substitute(team_id: str, substitute_discord_id: str):
     cursor.close()
     db.close()
 
-    
+
+# Insert a member into the blacklisted members of a particular team in the `teams` table by team ID
 def add_team_blacklist(team_id: str, blacklist_discord_id: int):
     db = mysql.connector.connect(host=db_host, port=db_port, user=db_user,
                                  passwd=db_password, database=db_name)
@@ -1177,6 +1221,7 @@ def add_team_blacklist(team_id: str, blacklist_discord_id: int):
     db.close()
 
 
+# Delete a member from the blacklisted members of a particular team in the `teams` table by team ID
 def remove_team_blacklist(team_id: str, blacklist_discord_id: str):
     db = mysql.connector.connect(host=db_host, port=db_port, user=db_user,
                                  passwd=db_password, database=db_name)

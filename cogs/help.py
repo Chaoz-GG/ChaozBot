@@ -1,5 +1,3 @@
-#!/usr/bin/python3
-
 import json
 
 import discord
@@ -40,6 +38,8 @@ class Help(commands.Cog):
         embed = discord.Embed(colour=self.bot.embed_colour)
 
         embed.set_thumbnail(url=chaoz_logo_url)
+
+        # NOTE: For each new command, wrap the command name in `` and place it in the relevant section of the embed
 
         if user_type == 'regular':
             embed.title = 'Regular Commands'

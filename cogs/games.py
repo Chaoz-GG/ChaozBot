@@ -29,6 +29,7 @@ with open('data/messages.json') as _json_file:
     messages = messages["games"]
 
 
+# Form for adding a game to the list of available games
 class Add(ui.Modal, title='Add Game'):
     abbreviation = ui.TextInput(label='Abbreviation', placeholder='Abbreviation for the game', max_length=10)
     name = ui.TextInput(label='Name', placeholder='The name of the game', max_length=50)
@@ -50,12 +51,14 @@ class Add(ui.Modal, title='Add Game'):
         with open('data/games.json') as f:
             games = json.load(f)
 
+        # Create a game object with the given values
         games[self.abbreviation.value.lower()] = [
             self.name.value,
             int(self.max_players.value),
             self.description.value or "",
             self.url.value]
 
+        # Dump the updated games list to the file
         with open('data/games.json', 'w') as f:
             json.dump(games, f, indent=4)
 
@@ -64,6 +67,7 @@ class Add(ui.Modal, title='Add Game'):
         return await ctx.edit_original_message(content=messages["add_game_success"])
 
 
+# Form for editing an existing game
 class Edit(ui.Modal, title='Edit Team'):
     def __init__(self):
         super().__init__()
@@ -96,6 +100,7 @@ class Edit(ui.Modal, title='Edit Team'):
         if self.url.value:
             game[3] = self.url.value
 
+        # Dump the updated games list to the file
         with open('data/games.json', 'w') as f:
             json.dump(games, f, indent=4)
 
@@ -144,12 +149,15 @@ class RemoveGameSelect(discord.ui.Select):
 
         await self.ctx.edit_original_message(content='Processing ...', embed=None, view=None)
 
+        # Load existing game data
         with open('data/games.json') as f:
             __games = json.load(f)
 
         _game = self.values[0]
         game_name = __games[_game][0]
 
+        # While removing a game we need to ensure that we remove it from the list of games a team has set, if it exists
+        # and also remove it as the active game if it is set as the active game for a team
         for team_id, games, active_game in get_all_teams_and_games():
             team = get_team_by_id(team_id)
             channel = ctx.guild.get_channel(join_team_channel_id)
@@ -178,8 +186,10 @@ class RemoveGameSelect(discord.ui.Select):
 
             await message.edit(embed=embed)
 
+        # Remove the game from the games list
         __games.pop(_game)
 
+        # Dump the updated games list to the file
         with open('data/games.json', 'w') as f:
             json.dump(__games, f, indent=4)
 
@@ -201,12 +211,14 @@ class GameLogoSelect(discord.ui.Select):
 
         await self.ctx.edit_original_message(content='Updating logo ...', embed=None, view=None)
 
+        # Create SFTP connection to our server
         key = paramiko.RSAKey.from_private_key_file(sftp_pvt_key, password=sftp_pvt_key_password)
 
         transport = paramiko.Transport((sftp_host, sftp_port))
         transport.connect(username=sftp_username, pkey=key)
         sftp = paramiko.SFTPClient.from_transport(transport)
 
+        # Copy the uploaded logo to the relevant location on the server
         sftp.putfo(self.logo, f'public_html/games/{self.values[0]}.png')
 
         sftp.close()
@@ -253,6 +265,7 @@ class Games(commands.Cog):
         with open('data/games.json') as f:
             games = json.load(f)
 
+        # Create existing game data select options
         options = list()
 
         for i, game_details in enumerate(games.items(), 1):
@@ -275,6 +288,7 @@ class Games(commands.Cog):
 
         await log_message(ctx, f'`{ctx.user}` has used the `{ctx.command.name}` command.')
 
+        # Bypass for sudo (administrative) roles
         sudo_roles = []
 
         for sudo_role_id in sudo_role_ids:
@@ -287,6 +301,7 @@ class Games(commands.Cog):
         else:
             return await ctx.edit_original_message(content=messages["admin_only"])
 
+        # Read the logo bytes from the uploaded image file
         _logo = io.BytesIO(await logo.read())
 
         embed = discord.Embed(colour=self.bot.embed_colour)
@@ -299,6 +314,7 @@ class Games(commands.Cog):
         with open('data/games.json') as f:
             games = json.load(f)
 
+        # Create the game select options list
         options = list()
 
         for i, game_details in enumerate(games.items(), 1):
@@ -320,6 +336,7 @@ class Games(commands.Cog):
     async def _add_game(self, ctx: discord.Interaction):
         await log_message(ctx, f'`{ctx.user}` has used the `{ctx.command.name}` command.')
 
+        # Bypass for sudo (administrative) roles
         sudo_roles = []
 
         for sudo_role_id in sudo_role_ids:
@@ -343,6 +360,7 @@ class Games(commands.Cog):
 
         await log_message(ctx, f'`{ctx.user}` has used the `{ctx.command.name}` command.')
 
+        # Bypass for sudo (administrative) roles
         sudo_roles = []
 
         for sudo_role_id in sudo_role_ids:
@@ -365,6 +383,7 @@ class Games(commands.Cog):
         with open('data/games.json') as f:
             games = json.load(f)
 
+        # Create the game select options list
         options = list()
 
         for i, game_details in enumerate(games.items(), 1):
@@ -387,6 +406,7 @@ class Games(commands.Cog):
 
         await log_message(ctx, f'`{ctx.user}` has used the `{ctx.command.name}` command.')
 
+        # Bypass for sudo (administrative) roles
         sudo_roles = []
 
         for sudo_role_id in sudo_role_ids:
@@ -409,6 +429,7 @@ class Games(commands.Cog):
         with open('data/games.json') as f:
             games = json.load(f)
 
+        # Create the game select options list
         options = list()
 
         for i, game_details in enumerate(games.items(), 1):

@@ -36,6 +36,7 @@ class Statistics(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
+        # Create a Steam WebAPI instance
         self.steamAPI = WebAPI(steam_key)
 
         self.update_frequency = update_frequency
@@ -82,6 +83,7 @@ class Statistics(commands.Cog):
         if member is None:
             member = ctx.user
 
+        # Check if the user has linked their Steam account with the bot first
         if not already_exists(member.id):
             return await ctx.edit_original_message(content=messages["profile_not_linked"])
 
@@ -89,6 +91,7 @@ class Statistics(commands.Cog):
             steam_id = get_steam_id(member.id)
 
             async with aiohttp.ClientSession() as session:
+                # Fetch the matchmaking stats of the user
                 async with session.get(f'http://localhost:5000/stats/view/mm/{steam_id}') as stats:
                     stats = await stats.json()
 
@@ -96,6 +99,7 @@ class Statistics(commands.Cog):
                     return await ctx.edit_original_message(content=messages["mm_stats_not_found"])
 
                 # noinspection PyUnresolvedReferences
+                # Fetch the Steam profile instance of the user
                 steam_user = self.steamAPI.ISteamUser.GetPlayerSummaries_v2(steamids=steam_id)["response"]["players"][0]
 
                 embed = discord.Embed(colour=self.bot.embed_colour)
@@ -105,24 +109,29 @@ class Statistics(commands.Cog):
 
                 embed.set_author(name='Chaoz Gaming', icon_url=chaoz_logo_url)
 
+                # Load the card base image from local assets
                 base = Image.open('assets/images/profile-base.png')
                 base = base.convert('RGB')
 
                 _new = base.copy()
 
+                # Create an ImageDraw instance for the base image
                 new = ImageDraw.Draw(_new)
 
                 mm_rank = list(self.mm_ranks.keys())[list(self.mm_ranks.values()).index(stats["rank"])]
 
+                # Load the rank image from local assets
                 mm_rank_image = Image.open(f'assets/images/ranks/matchmaking/{mm_rank}.png')
                 _new.paste(mm_rank_image, (85, 165))
 
                 async with session.get(f'{steam_user["avatarfull"]}') as res:
+                    # Load the Steam avatar of the user
                     im = Image.open(BytesIO(await res.read()))
 
                 im = im.convert("RGBA")
                 im = im.resize((200, 200))
                 big_size = (im.size[0] * 3, im.size[1] * 3)
+                # Create a circular mask for the avatar
                 mask = Image.new('L', big_size, 0)
                 draw = ImageDraw.Draw(mask)
                 draw.ellipse((0, 0) + big_size, fill=255)
@@ -139,6 +148,7 @@ class Statistics(commands.Cog):
                         country_code = res[0]["cca2"].lower()
 
                     async with session.get(f'https://flagcdn.com/32x24/{country_code}.png') as res:
+                        # Fetch the country flag image of user
                         flag = Image.open(BytesIO(await res.read()))
 
                     flag = flag.convert("RGBA")
@@ -185,12 +195,15 @@ Most Played Map:
                 new.text((720, 410), __bio, font=ImageFont.truetype(self.bio_font, 25), fill=self.stats_text_color)
                 new.text((720, 365), __country, font=ImageFont.truetype(self.font, 25), fill=self.stats_text_color)
 
+                # Generate a random file name
                 file_name = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(10))
 
+                # Create a buffer for the image
                 buffer = BytesIO()
                 _new.save(buffer, format="PNG")
                 buffer.seek(0)
 
+                # Convert the buffer to a Discord file object
                 file = discord.File(buffer, filename=f'{file_name}.png')
 
                 embed.set_image(url=f'attachment://{file_name}.png')
@@ -198,14 +211,17 @@ Most Played Map:
                 embed.set_footer(text=f'Matchmaking | Stats are updated every {self.update_frequency} hours.',
                                  icon_url=steam_logo_url)
 
+                # Remove all the rank roles of the user
                 for role_id in self.mm_rank_role_ids.values():
                     role = ctx.guild.get_role(role_id)
 
                     if role in member.roles:
                         await member.remove_roles(role)
 
+                # Fetch the relevant rank role of the user
                 rank_role = ctx.guild.get_role(self.mm_rank_role_ids[stats["rank"]])
 
+                # Add the relevant rank role to the user
                 await member.add_roles(rank_role)
 
                 await ctx.edit_original_message(attachments=[file], embed=embed)
@@ -221,14 +237,15 @@ Most Played Map:
         if member is None:
             member = ctx.user
 
+        # Check if the user has linked their Steam account with the bot first
         if not already_exists(member.id):
-
             return await ctx.edit_original_message(content=messages["profile_not_linked"])
 
         else:
             steam_id = get_steam_id(member.id)
 
             async with aiohttp.ClientSession() as session:
+                # Fetch the FaceIT stats of the user, if exists
                 async with session.get(f'http://localhost:5000/stats/view/faceit/{steam_id}') as stats:
                     stats = await stats.json()
 
@@ -236,6 +253,7 @@ Most Played Map:
                     return await ctx.edit_original_message(content=messages["faceit_stats_not_found"])
 
                 # noinspection PyUnresolvedReferences
+                # Fetch the Steam profile instance of the user
                 steam_user = self.steamAPI.ISteamUser.GetPlayerSummaries_v2(steamids=steam_id)["response"]["players"][0]
 
                 embed = discord.Embed(colour=self.bot.embed_colour)
@@ -245,17 +263,21 @@ Most Played Map:
 
                 embed.set_author(name='Chaoz Gaming', icon_url=chaoz_logo_url)
 
+                # Load the rank card base image from local assets
                 base = Image.open('assets/images/profile-base.png')
                 base = base.convert('RGB')
 
                 _new = base.copy()
 
+                # Create an ImageDraw instance for the base image
                 new = ImageDraw.Draw(_new)
 
+                # Load the FaceIT rank image from local assets
                 faceit_rank_image = Image.open(f'assets/images/ranks/faceit/{stats["rank"]}.png')
 
                 faceit_rank_image = faceit_rank_image.convert("RGBA")
                 big_size = (faceit_rank_image.size[0] * 3, faceit_rank_image.size[1] * 3)
+                # Create a circular mask for the FaceIT rank image
                 mask = Image.new('L', big_size, 0)
                 draw = ImageDraw.Draw(mask)
                 draw.ellipse((0, 0) + big_size, fill=255)
@@ -265,10 +287,13 @@ Most Played Map:
                 _new.paste(faceit_rank_image, (135, 165), faceit_rank_image)
 
                 async with session.get(f'{steam_user["avatarfull"]}') as res:
+                    # Load the Steam avatar of the user and wrap it into a BytesIO object
                     im = Image.open(BytesIO(await res.read()))
+
                 im = im.convert("RGBA")
                 im = im.resize((200, 200))
                 big_size = (im.size[0] * 3, im.size[1] * 3)
+                # Create a circular mask for the Steam avatar
                 mask = Image.new('L', big_size, 0)
                 draw = ImageDraw.Draw(mask)
                 draw.ellipse((0, 0) + big_size, fill=255)
@@ -280,11 +305,13 @@ Most Played Map:
                 country = get_country(member.id)
 
                 if country:
+                    # Get the CCA2 country code of the user from Rest Countries API
                     async with session.get(f'https://restcountries.com/v3.1/name/{get_country(member.id)}') as res:
                         res = await res.json()
                         country_code = res[0]["cca2"].lower()
 
                     async with session.get(f'https://flagcdn.com/32x24/{country_code}.png') as res:
+                        # Load the country flag image of the user and wrap it into a BytesIO object
                         flag = Image.open(BytesIO(await res.read()))
 
                     flag = flag.convert("RGBA")
@@ -331,12 +358,15 @@ Most Played Map:
                 new.text((720, 410), __bio, font=ImageFont.truetype(self.bio_font, 25), fill=self.stats_text_color)
                 new.text((720, 365), __country, font=ImageFont.truetype(self.font, 25), fill=self.stats_text_color)
 
+                # Generate a random file name
                 file_name = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(10))
 
+                # Create a BytesIO object to store the image
                 buffer = BytesIO()
                 _new.save(buffer, format="PNG")
                 buffer.seek(0)
 
+                # Convert the buffer into a discord.File object
                 file = discord.File(buffer, filename=f'{file_name}.png')
 
                 embed.set_image(url=f'attachment://{file_name}.png')
@@ -344,14 +374,17 @@ Most Played Map:
                 embed.set_footer(text=f'FaceIT | Stats are updated every {update_frequency} hours.',
                                  icon_url=faceit_logo_url)
 
+                # Remove all FaceIT rank roles from the user
                 for role_id in self.faceit_rank_role_ids.values():
                     role = ctx.guild.get_role(role_id)
 
                     if role in member.roles:
                         await member.remove_roles(role)
 
+                # Fetch the relevant FaceIT rank role from the user's FaceIT rank
                 rank_role = ctx.guild.get_role(self.faceit_rank_role_ids[str(stats["rank"])])
 
+                # Add the FaceIT rank role to the user
                 await member.add_roles(rank_role)
 
                 await ctx.edit_original_message(attachments=[file], embed=embed)
@@ -364,6 +397,7 @@ Most Played Map:
 
         await log_message(ctx, f'`{ctx.user}` has used the `{ctx.command.name}` command.')
 
+        # Bypass for the sudo (administrative) roles set in the config
         sudo_roles = []
 
         for sudo_role_id in sudo_role_ids:
@@ -376,9 +410,11 @@ Most Played Map:
         else:
             return await ctx.edit_original_message(content=messages["admin_only"])
 
+        # If no member is specified, use the author of the command
         if not member:
             member = ctx.user
 
+        # Check if the user has linked his Steam account with the bot first
         if not already_exists(member.id):
             return await ctx.edit_original_message(content=messages["profile_not_linked"])
 
@@ -386,48 +422,61 @@ Most Played Map:
             steam_id = get_steam_id(member.id)
 
             async with aiohttp.ClientSession() as session:
+                # Request a matchmaking stats update for the user
                 async with session.get(f'http://localhost:5000/stats/update/mm/{steam_id}'):
                     pass
 
+                # Request a FaceIT stats update for the user
                 async with session.get(f'http://localhost:5000/stats/update/faceit/{steam_id}'):
                     pass
 
+                # Fetch the matchmaking stats of the user
                 async with session.get(f'http://localhost:5000/stats/view/mm/{steam_id}') as stats:
                     stats = await stats.json()
 
                 if "error" not in stats.keys():
+                    # Remove all the matchmaking rank roles from the user
                     for role_id in self.mm_rank_role_ids.values():
                         role = ctx.guild.get_role(role_id)
 
                         if role in member.roles:
                             await member.remove_roles(role)
 
+                    # Fetch the relevant matchmaking rank role from the user's matchmaking rank
                     rank_role = ctx.guild.get_role(self.mm_rank_role_ids[stats["rank"]])
 
+                    # Add the matchmaking rank role to the user
                     await member.add_roles(rank_role)
 
+                # Fetch the FaceIT stats of the user, if found
                 async with session.get(f'http://localhost:5000/stats/view/faceit/{steam_id}') as stats:
                     stats = await stats.json()
 
                 if "error" not in stats.keys():
+                    # Remove all the FaceIT rank roles from the user
                     for role_id in self.faceit_rank_role_ids.values():
                         role = ctx.guild.get_role(role_id)
 
                         if role in member.roles:
                             await member.remove_roles(role)
 
+                    # Fetch the relevant FaceIT rank role from the user's FaceIT rank
                     rank_role = ctx.guild.get_role(self.faceit_rank_role_ids[str(stats["rank"])])
 
+                    # Add the FaceIT rank role to the user
                     await member.add_roles(rank_role)
 
                 # noinspection PyUnresolvedReferences
+                # Fetch the user's Steam profile instance
                 steam_user = self.steamAPI.ISteamUser.GetPlayerSummaries_v2(steamids=steam_id)["response"]["players"][0]
 
                 if "loccountrycode" in steam_user.keys():
+                    # Fetch the user's country information
                     async with session.get(f'https://restcountries.com/v3.1/alpha/{steam_user["loccountrycode"]}') \
                             as res:
                         res = await res.json()
 
+                    # Update the user's country name in the database
                     update_country(member.id, res[0]["name"]["common"])
 
                     region = res[0]["region"]
@@ -435,8 +484,10 @@ Most Played Map:
                     if region == "Americas":
                         region = res[0]["subregion"]
 
+                    # Update the user's region name in the database
                     update_region(member.id, region)
 
+                    # Remove all the region roles from the user
                     for role_id in self.region_role_ids.values():
                         role = ctx.guild.get_role(role_id)
 
@@ -445,21 +496,26 @@ Most Played Map:
 
                     region_role_id = self.region_role_ids[region]
 
+                    # Fetch the relevant region role from the user's region
                     region_role = ctx.guild.get_role(region_role_id)
 
+                    # Add the region role to the user
                     await member.add_roles(region_role)
 
             # noinspection PyUnresolvedReferences
+            # Fetch the user's game stats for CSGO (app ID 730)
             game_stats = self.steamAPI.ISteamUserStats.GetUserStatsForGame_v2(steamid=steam_id, appid=730)
 
             game_stats = game_stats["playerstats"]["stats"]
 
             hours = 0
 
+            # Calculate the playtime of the user in hours
             for game_stat in game_stats:
                 if game_stat["name"] == 'total_time_played':
                     hours = round(game_stat["value"] / 3600)
 
+            # Update the user's total playtime in the database
             update_hours(member.id, hours)
 
             await log_message(ctx, f'`{ctx.user}` has requested a stats update for `{member}`.')

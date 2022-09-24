@@ -564,8 +564,11 @@ class Profile(commands.Cog):
     async def _before_wish_users(self):
         await self.bot.wait_until_ready()
 
-    async def cog_load(self):
+    async def cog_load(self) -> None:
         self.wish_users.start()
+
+    async def cog_unload(self) -> None:
+        self.wish_users.cancel()
 
     # Retrieve member data on joining, if exists
     @commands.Cog.listener()

@@ -44,11 +44,13 @@ with open('data/messages.json') as _json_file:
     messages = json.load(_json_file)
     messages = messages["teams"]
 
+# Create a Steam WebAPI instance
 steamAPI = WebAPI(steam_key)
 
 
 class MemberRequest(discord.ui.View):
     def __init__(self):
+        # Initialize the view with a 12-hour timeout
         super().__init__(timeout=43200)
 
         self.ctx = None
@@ -61,7 +63,9 @@ class MemberRequest(discord.ui.View):
     # noinspection PyUnusedLocal
     @discord.ui.button(label='\u2714', style=discord.ButtonStyle.green, custom_id='persistent_view:accept_member')
     async def _accept(self, ctx: discord.Interaction, button: discord.ui.Button):
+        # Add the user as a member of the team on approval
         add_team_member(self.team["id"], self.member_steam_id, self.member_discord_id)
+        # Remove the user from the team's requested member list
         remove_team_requested_member(self.team["id"], self.member_discord_id)
 
         member = self.ctx.guild.get_member(self.member_discord_id)
@@ -69,7 +73,9 @@ class MemberRequest(discord.ui.View):
 
         await log_message(ctx, f'`{member}` has been accepted into the team `{self.team["name"]}` as a member.')
 
+        # Notify the user of the approval
         await member.send(messages["member_request_accept_member"].format(self.team["name"]))
+        # Add an approval record for the captain to view later
         await ctx.response.send_message(messages["member_request_accept_captain"].format(self.member_text,
                                                                                          self.team["name"]),
                                         ephemeral=True)
@@ -77,7 +83,9 @@ class MemberRequest(discord.ui.View):
     # noinspection PyUnusedLocal
     @discord.ui.button(label='\u274C', style=discord.ButtonStyle.red, custom_id='persistent_view:reject_member')
     async def _reject(self, ctx: discord.Interaction, button: discord.ui.Button):
+        # Remove the user from the team's requested member list
         remove_team_requested_member(self.team["id"], self.member_discord_id)
+        # Add the user to the team's blacklist
         add_team_blacklist(self.team["id"], self.member_discord_id)
 
         member = self.ctx.guild.get_member(self.member_discord_id)
@@ -85,20 +93,25 @@ class MemberRequest(discord.ui.View):
 
         await log_message(ctx, f'`{member}` has been rejected from the team `{self.team["name"]}` as a member.')
 
+        # Notify the user of the rejection
         await member.send(messages["member_request_reject_member"].format(self.team["name"]))
+        # Add a rejection record for the captain to view later
         await ctx.response.send_message(messages["member_request_reject_captain"].format(self.member_text,
                                                                                          self.team["name"]),
                                         ephemeral=True)
 
     async def on_timeout(self):
+        # Remove the user from the team's requested member list
         remove_team_requested_member(self.team["id"], self.member_discord_id)
 
         captain = self.ctx.guild.get_member(self.captain_discord_id)
+        # Notify the captain that the request has timed out
         await captain.send(messages["member_request_timeout_captain"].format(self.member_text, self.team["name"]))
         
     
 class SubstituteRequest(discord.ui.View):
     def __init__(self):
+        # Initialize the view with a 12-hour timeout
         super().__init__(timeout=43200)
 
         self.ctx = None
@@ -111,7 +124,9 @@ class SubstituteRequest(discord.ui.View):
     # noinspection PyUnusedLocal
     @discord.ui.button(label='\u2714', style=discord.ButtonStyle.green, custom_id='persistent_view:accept_substitute')
     async def _accept(self, ctx: discord.Interaction, button: discord.ui.Button):
+        # Add the user as a substitute of the team on approval
         add_team_substitute(self.team["id"], self.substitute_steam_id, self.substitute_discord_id)
+        # Remove the user from the team's requested substitute list
         remove_team_requested_substitute(self.team["id"], self.substitute_discord_id)
 
         substitute = self.ctx.guild.get_member(self.substitute_discord_id)
@@ -119,7 +134,9 @@ class SubstituteRequest(discord.ui.View):
 
         await log_message(ctx, f'`{substitute}` has been accepted into the team `{self.team["name"]}` as a substitute.')
 
+        # Notify the user of the approval
         await substitute.send(messages["substitute_request_accept_substitute"].format(self.team["name"]))
+        # Add an approval record for the captain to view later
         await ctx.response.send_message(messages["substitute_request_accept_captain"].format(self.substitute_text,
                                                                                              self.team["name"]),
                                         ephemeral=True)
@@ -127,7 +144,9 @@ class SubstituteRequest(discord.ui.View):
     # noinspection PyUnusedLocal
     @discord.ui.button(label='\u274C', style=discord.ButtonStyle.red, custom_id='persistent_view:reject_substitute')
     async def _reject(self, ctx: discord.Interaction, button: discord.ui.Button):
+        # Remove the user from the team's requested substitute list
         remove_team_requested_substitute(self.team["id"], self.substitute_discord_id)
+        # Add the user to the team's blacklist
         add_team_blacklist(self.team["id"], self.substitute_discord_id)
 
         substitute = self.ctx.guild.get_member(self.substitute_discord_id)
@@ -135,15 +154,19 @@ class SubstituteRequest(discord.ui.View):
 
         await log_message(ctx, f'`{substitute}` has been rejected from the team `{self.team["name"]}` as a substitute.')
 
+        # Notify the user of the rejection
         await substitute.send(messages["substitute_request_reject_substitute"].format(self.team["name"]))
+        # Add a rejection record for the captain to view later
         await ctx.response.send_message(messages["substitute_request_reject_captain"].format(self.substitute_text,
                                                                                              self.team["name"]),
                                         ephemeral=True)
 
     async def on_timeout(self):
+        # Remove the user from the team's requested substitute list
         remove_team_requested_substitute(self.team["id"], self.substitute_discord_id)
 
         captain = self.ctx.guild.get_member(self.captain_discord_id)
+        # Notify the captain that the request has timed out
         await captain.send(messages["substitute_request_timeout_captain"].format(self.substitute_text,
                                                                                  self.team["name"]))
 
@@ -157,38 +180,47 @@ class Options(discord.ui.View):
     # noinspection PyUnusedLocal
     @discord.ui.button(label='Join as Member', style=discord.ButtonStyle.green, custom_id='persistent_view:join_member')
     async def _join_member(self, ctx: discord.Interaction, button: discord.ui.Button):
+        # Check if the user has linked his Steam profile with the bot first
         if not already_exists(ctx.user.id):
             return await ctx.response.send_message(messages["steam_account_link_warning"], ephemeral=True)
 
+        # Obtain the team from the passed message ID if the team has not already been parsed
         team = self.team or get_team_by_message_id(ctx.message.id)
 
         steam_id = get_steam_id(ctx.user.id)
 
+        # Check if the user has already requested to be a member of this team
         if str(ctx.user.id) in get_team_requested_members(team["id"]) \
                 or str(ctx.user.id) in get_team_requested_substitutes(team["id"]):
             return await ctx.response.send_message(messages["already_requested"], ephemeral=True)
 
+        # Check if the user is in the team's blacklist
         if str(ctx.user.id) in get_team_blacklist(team["id"]):
             return await ctx.response.send_message(messages["blacklisted"], ephemeral=True)
 
+        # Check if the user is already a member of the team
         if check_team_member_exists(team["id"], steam_id):
             return await ctx.response.send_message(messages["already_member"], ephemeral=True)
 
+        # Check if the user is already a substitute of the team
         if check_team_substitute_exists(team["id"], steam_id):
             return await ctx.response.send_message(messages["already_substitute"], ephemeral=True)
 
         with open('data/games.json') as f:
             games = json.load(f)
 
+        # Find the active game information of the team
         for _game in games.items():
             if _game[1][0] == team['active_game']:
                 break
 
         # noinspection PyUnboundLocalVariable
+        # Check if the user is already in a team for the active game of the team
         if check_team_members_full(team["id"], games[_game[0]][1]):
             return await ctx.response.send_message(messages["team_full"], ephemeral=True)
 
         # noinspection PyUnresolvedReferences
+        # Fetch the Steam profile instance of the user
         steam_user = steamAPI.ISteamUser.GetPlayerSummaries_v2(steamids=steam_id)["response"]["players"][0]
 
         message = f'[{steam_user["personaname"]}](https://steamcommunity.com/profiles/{steam_id}) ' \
@@ -205,50 +237,62 @@ class Options(discord.ui.View):
 
         captain = ctx.guild.get_member(team["captain_discord_id"])
 
+        # Send the request to the captain for approval
         await captain.send(message, view=view)
-        
+
+        # Add the user to the team's requested member list
         add_team_requested_member(team["id"], ctx.user.id)
 
         await log_message(ctx, f'`{ctx.user}` has requested to join the team `{team["name"]}` as a member.')
 
+        # Notify the user that the request has been placed
         await ctx.response.send_message(messages["request_placed"].format(team["name"]), ephemeral=True)
 
     # noinspection PyUnusedLocal
     @discord.ui.button(label='Join as Substitute', style=discord.ButtonStyle.green,
                        custom_id='persistent_view:join_substitute')
     async def _join_substitute(self, ctx: discord.Interaction, button: discord.ui.Button):
+        # Check if the user has linked his Steam profile with the bot first
         if not already_exists(ctx.user.id):
             return await ctx.response.send_message(messages["steam_account_link_warning"], ephemeral=True)
 
+        # Obtain the team from the passed message ID if the team has not already been parsed
         team = self.team or get_team_by_message_id(ctx.message.id)
 
         steam_id = get_steam_id(ctx.user.id)
 
+        # Check if the user has already requested to be a member of this team
         if str(ctx.user.id) in get_team_requested_members(team["id"]) \
                 or str(ctx.user.id) in get_team_requested_substitutes(team["id"]):
             return await ctx.response.send_message(messages["already_requested"], ephemeral=True)
 
+        # Check if the user is in the team's blacklist
         if str(ctx.user.id) in get_team_blacklist(team["id"]):
             return await ctx.response.send_message(messages["blacklisted"], ephemeral=True)
 
+        # Check if the user is already a member of the team
         if check_team_substitute_exists(team["id"], steam_id):
             return await ctx.response.send_message(messages["already_substitute"], ephemeral=True)
 
+        # Check if the user is already a substitute of the team
         if check_team_member_exists(team["id"], steam_id):
             return await ctx.response.send_message(messages["already_member"], ephemeral=True)
 
         with open('data/games.json') as f:
             games = json.load(f)
 
+        # Find the active game information of the team
         for _game in games.items():
             if _game[1][0] == team['active_game']:
                 break
 
         # noinspection PyUnboundLocalVariable
+        # Check if the user is already in a team for the active game of the team
         if check_team_subsitutes_full(team["id"], games[_game[0]][1]):
             return await ctx.response.send_message(messages["team_full"], ephemeral=True)
 
         # noinspection PyUnresolvedReferences
+        # Fetch the Steam profile instance of the user
         steam_user = steamAPI.ISteamUser.GetPlayerSummaries_v2(steamids=steam_id)["response"]["players"][0]
 
         message = f'[{steam_user["personaname"]}](https://steamcommunity.com/profiles/{steam_id}) ' \
@@ -265,16 +309,20 @@ class Options(discord.ui.View):
 
         captain = ctx.guild.get_member(team["captain_discord_id"])
 
+        # Send the request to the captain for approval
         await captain.send(message, view=view)
-        
+
+        # Add the user to the team's requested substitute list
         add_team_requested_substitute(team["id"], ctx.user.id)
 
         await log_message(ctx, f'`{ctx.user}` has requested to join the team `{team["name"]}` as a substitute.')
 
+        # Notify the user that the request has been placed
         await ctx.response.send_message(messages["request_placed"].format(team["name"]), ephemeral=True)
 
 
 class Team(ui.Modal, title='New Chaoz Team'):
+    # Create the select options list for the available games
     options = list()
 
     with open('data/games.json') as f:
@@ -303,17 +351,21 @@ class Team(ui.Modal, title='New Chaoz Team'):
 
         await ctx.response.defer(thinking=True, ephemeral=True)
 
+        # Check if the team name is already taken
         if self.name.value in get_all_team_names():
             return await ctx.edit_original_message(content=messages["team_name_exists"])
 
+        # Check if the team abbreviation is already taken
         if self.abbreviation.value.upper() in get_all_team_abbreviations():
             return await ctx.edit_original_message(content=messages["team_abbreviation_exists"])
 
+        # Generate a random team ID
         team_id = ''.join(random.choices(string.ascii_uppercase + string.digits, k=10))
 
         steam_id = get_steam_id(ctx.user.id)
         region = get_region(ctx.user.id)
 
+        # Create the game list that the team has selected
         _games = list()
 
         with open('data/games.json') as f:
@@ -322,22 +374,26 @@ class Team(ui.Modal, title='New Chaoz Team'):
         for _game in self.game.values:
             _games.append(games[_game][0])
 
+        # Add the entry for the team in the database
         create_team(team_id, "|".join(_games), games[self.game.values[0]][0], self.name.value,
                     self.abbreviation.value.upper(), region, steam_id, ctx.user.id,
                     org_name=self.org_name.value, description=self.description.value)
 
+        # Create an SFTP connection to the server
         key = paramiko.RSAKey.from_private_key_file(sftp_pvt_key, password=sftp_pvt_key_password)
 
         transport = paramiko.Transport((sftp_host, sftp_port))
         transport.connect(username=sftp_username, pkey=key)
         sftp = paramiko.SFTPClient.from_transport(transport)
 
+        # Copy the default team logo from local assets to the relevant path on the server
         with open('assets/images/team-default.png') as f:
             sftp.putfo(f, f'public_html/teams/{team_id}.png')
 
         sftp.close()
         transport.close()
 
+        # Fetch the channel where the team embed will be sent
         join_team_channel = ctx.guild.get_channel(join_team_channel_id)
 
         embed = discord.Embed(colour=0xffffff)
@@ -367,11 +423,14 @@ class Team(ui.Modal, title='New Chaoz Team'):
 
         msg = await join_team_channel.send(embed=embed, view=view)
 
+        # Update the team's embed message ID in the database
         update_team_message_id(team_id, msg.id)
+        # Add the user as a member of the team
         add_team_member(team_id, steam_id, ctx.user.id)
 
         await log_message(ctx, f'`{ctx.user}` has created a new team `{self.name.value}`.')
 
+        # Notify the user of successful team creation
         return await ctx.edit_original_message(content=messages["team_created"].format(self.name.value))
 
 
@@ -397,8 +456,10 @@ class Edit(ui.Modal, title='Edit Team'):
     async def on_submit(self, ctx: discord.Interaction):
         await ctx.response.defer()
 
+        # Fetch the team by the parsed team ID
         team = get_team_by_id(self.team_id)
 
+        # Fetch the team embed for update
         channel = ctx.guild.get_channel(join_team_channel_id)
         message = await channel.fetch_message(team["message_id"])
         embed = message.embeds[0]
@@ -407,27 +468,38 @@ class Edit(ui.Modal, title='Edit Team'):
             games = json.load(f)
 
         if self.active_game.values:
+            # Update the active game of the team in the database
             update_team_active_game(self.team_id, games[self.active_game.values[0]][0])
+            # Update the active game of the team in the embed
             embed.set_field_at(2, name='Active Game', value=f'**{games[self.active_game.values[0]][0]}**')
+            # Update the active game logo of the team in the embed
             embed.set_footer(text=games[self.active_game.values[0]][0],
                              icon_url=f'https://bot.chaoz.gg/games/{self.active_game.values[0]}.png')
 
         if self.region.values:
+            # Update the region of the team in the database
             update_team_region(self.team_id, self.region.values[0])
+            # Update the region of the team in the embed
             embed.set_field_at(5, name='Region', value=self.region.values[0])
 
         if self.description.value:
+            # Update the description of the team in the database
             update_team_description(self.team_id, self.description.value)
+            # Update the description of the team in the embed
             embed.description = self.description.value
 
         if self.org_name.value:
+            # Update the organization name of the team in the database
             update_team_org_name(self.team_id, self.org_name.value)
+            # Update the organization name of the team in the embed
             embed.set_field_at(4, name='Organization', value=f'**{self.org_name.value}**')
 
+        # Update the team embed message
         await message.edit(embed=embed)
 
         await log_message(ctx, f'`{self.ctx.user}` has edited team `{team["name"]}`.')
         
+        # Notify the user of successful update
         return await self.ctx.edit_original_message(content=messages["team_updated"].format(team["name"]),
                                                     embed=None, view=None)
 
@@ -443,6 +515,7 @@ class MemberSelect(discord.ui.Select):
     async def callback(self, ctx: discord.Interaction):
         await ctx.response.defer()
 
+        # Remove the member from the team by the selected Steam ID
         remove_team_member(self.team_id, self.values[0])
 
         await log_message(ctx, f'`{self.ctx.user}` has removed member `{self.values[0]}` '
@@ -463,6 +536,7 @@ class SubstituteSelect(discord.ui.Select):
     async def callback(self, ctx: discord.Interaction):
         await ctx.response.defer()
 
+        # Remove the substitute from the team by the selected Steam ID
         remove_team_substitute(self.team_id, self.values[0])
 
         await log_message(ctx, f'`{self.ctx.user}` has removed substitute `{self.values[0]}` '
@@ -483,6 +557,7 @@ class BlacklistSelect(discord.ui.Select):
     async def callback(self, ctx: discord.Interaction):
         await ctx.response.defer()
 
+        # Remove the user from the team blacklist by the selected Steam ID
         remove_team_blacklist(self.team_id, self.values[0])
 
         await log_message(ctx, f'`{self.ctx.user}` has removed blacklisted user `{self.values[0]}` '
@@ -502,6 +577,7 @@ class TeamCPSelect(discord.ui.Select):
     async def callback(self, ctx: discord.Interaction):
         await ctx.response.defer()
 
+        # Initialize the control panel view with the given team ID
         view = CP()
         view.ctx = ctx
         view.team_id = self.values[0]
@@ -522,27 +598,34 @@ class TeamLogoSelect(discord.ui.Select):
 
         await self.ctx.edit_original_message(content='Updating logo ...', embed=None, view=None)
 
+        # Create SFTP connection to the server
         key = paramiko.RSAKey.from_private_key_file(sftp_pvt_key, password=sftp_pvt_key_password)
 
         transport = paramiko.Transport((sftp_host, sftp_port))
         transport.connect(username=sftp_username, pkey=key)
         sftp = paramiko.SFTPClient.from_transport(transport)
 
+        # Upload the attached team logo to the relevant path in the server
         sftp.putfo(self.logo, f'public_html/teams/{self.values[0]}.png')
 
         sftp.close()
         transport.close()
 
+        # Get the team information by the selected team ID
         team = get_team_by_id(self.values[0])
 
+        # Fetch the team embed by message ID
         channel = ctx.guild.get_channel(join_team_channel_id)
         message = await channel.fetch_message(team['message_id'])
         embed = message.embeds[0]
+        # Update the team logo in the embed
         embed.set_thumbnail(url=f'https://bot.chaoz.gg/teams/{self.values[0]}.png')
+        # Update the team message embed
         await message.edit(embed=embed)
 
         await log_message(self.ctx, f'`{self.ctx.user}` has updated the logo for `{team["name"]}`.')
 
+        # Notify the user of successful team logo update
         await self.ctx.edit_original_message(content=messages["logo_updated"], embed=None, view=None)
 
 
@@ -556,11 +639,14 @@ class TeamEmbedPublish(discord.ui.Select):
     async def callback(self, ctx: discord.Interaction):
         await ctx.response.defer()
 
+        # Send a notification for team embed publishing initialization
         await self.ctx.edit_original_message(content=messages["embeds_publishing"], embed=None, view=None)
 
+        # Iterate through all the team IDs selected
         for team_id in self.values:
             team = get_team_by_id(team_id)
 
+            # Create the team embed
             embed = discord.Embed(colour=0xffffff)
 
             embed.title = team['name']
@@ -587,6 +673,7 @@ class TeamEmbedPublish(discord.ui.Select):
             with open('data/games.json') as f:
                 games = json.load(f)
 
+            # Fetch the game logo URL for the team's active game
             for _game in games.items():
                 if _game[1][0] == team['active_game']:
                     embed.set_footer(text=team['active_game'], icon_url=f'https://bot.chaoz.gg/games/{_game[0]}.png')
@@ -594,13 +681,16 @@ class TeamEmbedPublish(discord.ui.Select):
             view = Options()
             view.team = team
 
+            # Fetch the channel where the team embed is to be published
             join_team_channel = ctx.guild.get_channel(join_team_channel_id)
 
             msg = await join_team_channel.send(embed=embed, view=view)
+            # Update the team message ID in the database
             update_team_message_id(team_id, msg.id)
 
             await log_message(self.ctx, f'`{self.ctx.user}` has published the embed for `{team["name"]}`.')
 
+        # Notify the user of successful team embed publishing
         await self.ctx.edit_original_message(content=messages["embeds_published"], embed=None, view=None)
 
 
@@ -622,6 +712,7 @@ class DeleteConfirm(discord.ui.View):
 
         join_team_channel = ctx.guild.get_channel(join_team_channel_id)
 
+        # Try to delete the team embed if the message id found, if not just pass
         try:
             message = await join_team_channel.fetch_message(team['message_id'])
             await message.delete()
@@ -629,12 +720,14 @@ class DeleteConfirm(discord.ui.View):
         except (discord.NotFound, discord.HTTPException):
             pass
 
+        # Create an SFTP connection to the server
         key = paramiko.RSAKey.from_private_key_file(sftp_pvt_key, password=sftp_pvt_key_password)
 
         transport = paramiko.Transport((sftp_host, sftp_port))
         transport.connect(username=sftp_username, pkey=key)
         sftp = paramiko.SFTPClient.from_transport(transport)
 
+        # Try to remove the team logo file from the server, if not found just pass
         try:
             sftp.remove(f'public_html/teams/{self.team_id}.png')
 
@@ -646,8 +739,10 @@ class DeleteConfirm(discord.ui.View):
 
         await log_message(self.ctx, f'`{self.ctx.user}` has deleted the team `{team["name"]}`.')
 
+        # Remove the team's entry from the database
         remove_team(self.team_id)
 
+        # Notify the user of successful team deletion
         await self.ctx.edit_original_message(content=messages["action_success"], view=None)
 
     # noinspection PyUnusedLocal
@@ -693,6 +788,7 @@ class CP(discord.ui.View):
             for _game in games.items():
                 if _game[1][0] == game:
                     if _game[1][0] == team['active_game']:
+                        # Check the option if this game is the team's active game
                         active_game_options.append(discord.SelectOption(value=_game[0], label=_game[1][0],
                                                                         default=True))
 
@@ -701,6 +797,7 @@ class CP(discord.ui.View):
 
         for _region in regions:
             if _region == team['region']:
+                # Check the option if this region is the team's region
                 region_options.append(discord.SelectOption(value=_region, label=_region, default=True))
 
             else:
@@ -726,13 +823,18 @@ class CP(discord.ui.View):
         embed.title = 'Manage Members'
         embed.description = 'Which member would you like to remove?\n'
 
+        # Fetch the member information for the team
         member_data = get_team_members(self.team_id)
+        # Fetch the team captain
         captain = str(get_team_by_id(self.team_id)['captain_steam_id'])
+        # Remove the captain from the list of members to be removed
         member_data.pop(captain)
 
+        # If there are no members to remove after removing the captain, notify the user
         if not member_data:
             await self.ctx.edit_original_message(content=messages["no_member_data"], view=None)
 
+        # Create the removal select options list for the remaining members of the team
         i = 1
         options = list()
 
@@ -769,11 +871,14 @@ class CP(discord.ui.View):
         embed.title = 'Manage Substitutes'
         embed.description = 'Which substitute would you like to remove?\n'
 
+        # Fetch the substitute information for the team
         substitute_data = get_team_substitutes(self.team_id)
 
+        # If there are no substitutes to remove, notify the user
         if not substitute_data:
             await self.ctx.edit_original_message(content=messages["no_substitute_data"], view=None)
 
+        # Create the removal select options list for the remaining substitutes of the team
         i = 1
         options = list()
 
@@ -810,11 +915,14 @@ class CP(discord.ui.View):
         embed.title = 'Manage Blacklist'
         embed.description = 'Which blacklisted user would you like to remove?\n'
 
+        # Fetch the blacklist information for the team
         blacklist_data = get_team_blacklist(self.team_id)
 
+        # If there are no blacklisted users to remove, notify the user
         if not blacklist_data:
             await self.ctx.edit_original_message(content=messages["no_blacklist_data"], view=None)
 
+        # Create the removal select options list for the remaining blacklisted users of the team
         i = 1
         options = list()
 
@@ -843,6 +951,7 @@ class CP(discord.ui.View):
     async def _delete_team(self, ctx: discord.Interaction, button: discord.ui.Button):
         await ctx.response.defer()
 
+        # Send a confirmation view to the user before actually deleting the team
         view = DeleteConfirm()
 
         view.ctx = self.ctx
@@ -858,6 +967,7 @@ class Create(discord.ui.View):
     # noinspection PyUnusedLocal
     @discord.ui.button(label='\u2795', style=discord.ButtonStyle.green, custom_id='persistent_view:create')
     async def _create(self, ctx: discord.Interaction, button: discord.ui.Button):
+        # Check if the user has linked their Steam profile with the bot first
         if not already_exists(ctx.user.id):
             return await ctx.response.send_message(messages["steam_account_link_warning"], ephemeral=True)
 
@@ -870,6 +980,7 @@ class Teams(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
+        # Reuse the global level Steam WebAPI instance
         self.steamAPI = steamAPI
 
         with open('config.json') as json_file:
@@ -878,8 +989,10 @@ class Teams(commands.Cog):
             self.join_team_channel_id = data['join_team_channel_id']
 
     async def _send_initial_message(self):
+        # Fetch the channel where the team creation message will be sent
         create_team_channel = self.bot.get_channel(self.create_team_channel_id)
 
+        # Check if the team creation message had already been sent and the message ID is stored in the cache
         with open('data/teams.json') as f:
             try:
                 data = json.load(f)
@@ -893,6 +1006,8 @@ class Teams(commands.Cog):
 
             except json.decoder.JSONDecodeError:
                 pass
+
+        # NOTE: Above we try to fetch the team creation message from the cache, if it doesn't exist, we send a new one
 
         embed = discord.Embed(colour=self.bot.embed_colour)
 
@@ -915,6 +1030,7 @@ To create a new team, press the \u2795 button.
         view = Create()
 
         msg = await create_team_channel.send(embed=embed, view=view)
+        # Pin the team creation message in the channel
         await msg.pin()
 
         with open('data/teams.json', 'w') as f:
@@ -922,10 +1038,12 @@ To create a new team, press the \u2795 button.
                 'message_id': msg.id
             }, f)
 
+        # Wait for the view to be invoked
         await view.wait()
 
     @commands.Cog.listener()
     async def on_ready(self):
+        # Send the team creation message on bot startup
         await self._send_initial_message()
 
     @app_commands.command(name='teamcp', description='Team Control Panel.')
@@ -935,6 +1053,7 @@ To create a new team, press the \u2795 button.
 
         await log_message(ctx, f'`{ctx.user}` has used the `{ctx.command.name}` command.')
 
+        # Bypass for the sudo (administrative) roles set in the config
         sudo_roles = []
 
         for sudo_role_id in sudo_role_ids:
@@ -942,12 +1061,15 @@ To create a new team, press the \u2795 button.
 
         for sudo_role in sudo_roles:
             if sudo_role in ctx.user.roles:
+                # Fetch all the teams bypassing the captain requirement
                 teams = get_teams_by_captain_id(-1)
                 break
 
         else:
+            # Fetch all the teams for which the user is a captain
             teams = get_teams_by_captain_id(ctx.user.id)
 
+        # Check if the user is a captain of any team
         if not teams:
             return await ctx.edit_original_message(content=messages["no_captain"])
 
@@ -956,6 +1078,7 @@ To create a new team, press the \u2795 button.
         embed.title = 'Select Team'
         embed.description = 'Which team would you like to launch the control panel for?\n'
 
+        # Create select options for each team that the user is a captain of
         options = list()
 
         for i, team_details in enumerate(teams, 1):
@@ -978,6 +1101,7 @@ To create a new team, press the \u2795 button.
 
         await log_message(ctx, f'`{ctx.user}` has used the `{ctx.command.name}` command.')
 
+        # Bypass for the sudo (administrative) roles set in the config
         sudo_roles = []
 
         for sudo_role_id in sudo_role_ids:
@@ -985,15 +1109,19 @@ To create a new team, press the \u2795 button.
 
         for sudo_role in sudo_roles:
             if sudo_role in ctx.user.roles:
+                # Fetch all the teams bypassing the captain requirement
                 teams = get_teams_by_captain_id(-1)
                 break
 
         else:
+            # Fetch all the teams for which the user is a captain
             teams = get_teams_by_captain_id(ctx.user.id)
 
+        # Check if the user is a captain of any team
         if not teams:
             return await ctx.edit_original_message(content=messages["no_captain"])
 
+        # Read the logo from the attachment
         _logo = io.BytesIO(await logo.read())
 
         embed = discord.Embed(colour=0xffffff)
@@ -1001,6 +1129,7 @@ To create a new team, press the \u2795 button.
         embed.title = 'Select Team'
         embed.description = 'Which team would you like to update the logo for?\n'
 
+        # Create select options for each team that the user is a captain of
         options = list()
 
         for i, team_details in enumerate(teams, 1):
@@ -1025,8 +1154,10 @@ To create a new team, press the \u2795 button.
         await log_message(ctx, f'`{ctx.user}` has used the `{ctx.command.name}` command.')
 
         team_id = team_id.upper()
+        # Fetch the team from the parsed team ID
         team = get_team_by_id(team_id)
 
+        # Check if the team exists
         if not team:
             return await ctx.edit_original_message(content=messages["team_not_found"])
 
@@ -1056,6 +1187,7 @@ To create a new team, press the \u2795 button.
         with open('data/games.json') as f:
             games = json.load(f)
 
+        # Obtain the game logo URL for the team's active game
         for _game in games.items():
             if _game[1][0] == team['active_game']:
                 embed.set_footer(text=team['active_game'], icon_url=f'https://bot.chaoz.gg/games/{_game[0]}.png')
@@ -1072,6 +1204,7 @@ To create a new team, press the \u2795 button.
 
         await log_message(ctx, f'`{ctx.user}` has used the `{ctx.command.name}` command.')
 
+        # Bypass for the sudo (administrative) roles set in the config
         sudo_roles = []
 
         for sudo_role_id in sudo_role_ids:
@@ -1084,6 +1217,7 @@ To create a new team, press the \u2795 button.
         else:
             return await ctx.edit_original_message(content=messages["admin_only"])
 
+        # Fetch all the teams bypassing the captain requirement
         teams = get_teams_by_captain_id(-1)
 
         embed = discord.Embed(colour=0xffffff)
@@ -1091,6 +1225,7 @@ To create a new team, press the \u2795 button.
         embed.title = 'Select Team'
         embed.description = 'Which team would you like to update the logo for?\n'
 
+        # Create select options for each team
         options = list()
 
         for i, team_details in enumerate(teams, 1):

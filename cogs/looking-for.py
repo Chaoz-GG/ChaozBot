@@ -43,6 +43,7 @@ class LFG(ui.Modal, title='Looking For Game'):
 
         await ctx.response.defer(thinking=True)
 
+        # Check if the game type entered is one of the valid types
         if self.game_type.value.lower() not in ['mm', 'faceit', 'wingman', '1v1', 'dz']:
             await ctx.edit_original_message(content=messages["invalid_game_type"])
 
@@ -79,6 +80,7 @@ class LFPTeamSelect(discord.ui.Select):
             games = json.load(f)
 
         for _game in games.items():
+            # Compare the active game of the team against the values in our games.json file
             if _game[1][0] == team['active_game']:
                 embed.set_footer(text=team['active_game'], icon_url=f'https://bot.chaoz.gg/games/{_game[0]}.png')
 
@@ -127,6 +129,7 @@ class LFCTeamSelect(discord.ui.Select):
             games = json.load(f)
 
         for _game in games.items():
+            # Compare the active game of the team against the values in our games.json file
             if _game[1][0] == team['active_game']:
                 embed.set_footer(text=team['active_game'], icon_url=f'https://bot.chaoz.gg/games/{_game[0]}.png')
 
@@ -188,6 +191,7 @@ class LookingFor(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
+        # Create a Steam WebAPI instance
         self.steamAPI = WebAPI(steam_key)
 
         self.mm_ranks = {
@@ -222,6 +226,7 @@ class LookingFor(commands.Cog):
     async def _lfg(self, ctx: discord.Interaction):
         await log_message(ctx, f'`{ctx.user}` has used the `{ctx.command.name}` command.')
 
+        # Check if the user has already linked his profile
         if not already_exists(ctx.user.id):
             return await ctx.edit_original_message(content=messages["profile_not_linked"])
 
@@ -254,6 +259,7 @@ class LookingFor(commands.Cog):
 
         async with aiohttp.ClientSession() as session:
             if modal.game_type.value.lower() != 'faceit':
+                # Fetch the matchmaking stats of the user
                 async with session.get(f'http://localhost:5000/stats/view/mm/{steam_id}') as stats:
                     stats = await stats.json()
 
@@ -262,11 +268,13 @@ class LookingFor(commands.Cog):
 
             else:
                 async with session.get(f'http://localhost:5000/stats/view/faceit/{steam_id}') as stats:
+                    # Fetch the FaceIT stats of the user, if exists
                     stats = await stats.json()
 
                     if "error" in stats.keys():
                         return await ctx.edit_original_message(content=messages["faceit_stats_not_found"])
 
+        # Fetch the user's Steam profile instance
         # noinspection PyUnresolvedReferences
         steam_user = self.steamAPI.ISteamUser.GetPlayerSummaries_v2(steamids=steam_id)["response"]["players"][0]
 
@@ -283,6 +291,7 @@ class LookingFor(commands.Cog):
         embed.add_field(name='Hours', value=hours if hours else 'Private')
 
         if modal.game_type.value.lower() != 'faceit':
+            # Open the image base from local assets
             base = Image.open('assets/images/profile-base.png')
             base = base.convert('RGB')
 
@@ -292,10 +301,13 @@ class LookingFor(commands.Cog):
 
             mm_rank = list(self.mm_ranks.keys())[list(self.mm_ranks.values()).index(stats["rank"])]
 
+            # Obtain the rank image of the user and paste on the base
             mm_rank_image = Image.open(f'assets/images/ranks/matchmaking/{mm_rank}.png')
             _new.paste(mm_rank_image, (85, 165))
 
+            # Fetch the user's Steam avatar
             response = requests.get(f'{steam_user["avatarfull"]}')
+            # Create a circular mask for the avatar
             im = Image.open(BytesIO(response.content))
             im = im.convert("RGBA")
             im = im.resize((200, 200))
@@ -314,6 +326,7 @@ class LookingFor(commands.Cog):
                 country_code = requests.get(f'https://restcountries.com/v3.1/name/{get_country(ctx.user.id)}') \
                     .json()[0]["cca2"].lower()
 
+                # Fetch the country flag image
                 response = requests.get(f'https://flagcdn.com/32x24/{country_code}.png')
                 flag = Image.open(BytesIO(response.content))
                 flag = flag.convert("RGBA")
@@ -362,6 +375,7 @@ Most Played Map:
 
             file_name = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(10))
 
+            # Create a buffer to convert it into the Discord file object
             buffer = BytesIO()
             _new.save(buffer, format="PNG")
             buffer.seek(0)
@@ -371,6 +385,7 @@ Most Played Map:
             embed.set_image(url=f'attachment://{file_name}.png')
 
         else:
+            # Open the image base from local assets
             base = Image.open('assets/images/profile-base.png')
             base = base.convert('RGB')
 
@@ -378,10 +393,12 @@ Most Played Map:
 
             new = ImageDraw.Draw(_new)
 
+            # Fetch the user's FaceIT rank image
             faceit_rank_image = Image.open(f'assets/images/ranks/faceit/{stats["rank"]}.png')
 
             faceit_rank_image = faceit_rank_image.convert("RGBA")
             big_size = (faceit_rank_image.size[0] * 3, faceit_rank_image.size[1] * 3)
+            # Create circular mask for the FaceIT rank image
             mask = Image.new('L', big_size, 0)
             draw = ImageDraw.Draw(mask)
             draw.ellipse((0, 0) + big_size, fill=255)
@@ -390,11 +407,13 @@ Most Played Map:
 
             _new.paste(faceit_rank_image, (135, 165), faceit_rank_image)
 
+            # Fetch the user's Steam avatar
             response = requests.get(f'{steam_user["avatarfull"]}')
             im = Image.open(BytesIO(response.content))
             im = im.convert("RGBA")
             im = im.resize((200, 200))
             big_size = (im.size[0] * 3, im.size[1] * 3)
+            # Create circular mask for the Steam avatar
             mask = Image.new('L', big_size, 0)
             draw = ImageDraw.Draw(mask)
             draw.ellipse((0, 0) + big_size, fill=255)
@@ -409,6 +428,7 @@ Most Played Map:
                 country_code = requests.get(f'https://restcountries.com/v3.1/name/{get_country(ctx.user.id)}') \
                     .json()[0]["cca2"].lower()
 
+                # Fetch the country flag image
                 response = requests.get(f'https://flagcdn.com/32x24/{country_code}.png')
                 flag = Image.open(BytesIO(response.content))
                 flag = flag.convert("RGBA")
@@ -457,10 +477,12 @@ Most Played Map:
 
             file_name = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(10))
 
+            # Create a buffer to convert it into the Discord file object
             buffer = BytesIO()
             _new.save(buffer, format="PNG")
             buffer.seek(0)
 
+            # Create the Discord file object from buffer
             file = discord.File(buffer, filename=f'{file_name}.png')
 
             embed.set_image(url=f'attachment://{file_name}.png')
@@ -478,6 +500,7 @@ Most Played Map:
 
         await log_message(ctx, f'`{ctx.user}` has used the `{ctx.command.name}` command.')
 
+        # Fetch all the teams for which the user is a captain
         teams = get_teams_by_captain_id(ctx.user.id)
 
         if not teams:
@@ -488,6 +511,7 @@ Most Played Map:
         embed.title = 'Select Team'
         embed.description = 'Which team would you like to post an advertisement for?\n'
 
+        # Create the select options list for the fetched teams
         options = list()
 
         for i, team_details in enumerate(teams, 1):
@@ -508,6 +532,7 @@ Most Played Map:
     async def _lft(self, ctx: discord.Interaction):
         await log_message(ctx, f'`{ctx.user}` has used the `{ctx.command.name}` command.')
 
+        # Check if the user has linked his profile with the bot first
         if not already_exists(ctx.user.id):
             return await ctx.edit_original_message(content=messages["profile_not_linked"])
 
@@ -518,6 +543,7 @@ Most Played Map:
         ctx = modal.interaction
 
         steam_id = get_steam_id(ctx.user.id)
+        # Fetch the Steam profile instance for the user
         # noinspection PyUnresolvedReferences
         steam_user = self.steamAPI.ISteamUser.GetPlayerSummaries_v2(steamids=steam_id)["response"]["players"][0]
 
@@ -559,6 +585,7 @@ Most Played Map:
     async def _lfc(self, ctx: discord.Interaction, seeker: app_commands.Choice[str]):
         await log_message(ctx, f'`{ctx.user}` has used the `{ctx.command.name}` command.')
 
+        # Check if the user seeking a coach is an individual or a team
         if seeker.value == 'individual':
             modal = LFC()
             await ctx.response.send_modal(modal)
@@ -569,6 +596,7 @@ Most Played Map:
             embed = discord.Embed(colour=self.bot.embed_colour)
 
             steam_id = get_steam_id(ctx.user.id)
+            # Fetch the Steam profile instance for the user
             # noinspection PyUnresolvedReferences
             steam_user = self.steamAPI.ISteamUser.GetPlayerSummaries_v2(steamids=steam_id)["response"]["players"][0]
 
@@ -599,6 +627,7 @@ Most Played Map:
         else:
             await ctx.response.defer(thinking=True)
 
+            # Fetch all the teams for which the user is a captain
             teams = get_teams_by_captain_id(ctx.user.id)
 
             if not teams:
@@ -609,6 +638,7 @@ Most Played Map:
             embed.title = 'Select Team'
             embed.description = 'Which team would you like to post an advertisement for?\n'
 
+            # Create the select options list for the teams that the user is a captain of
             options = list()
 
             for i, team_details in enumerate(teams, 1):

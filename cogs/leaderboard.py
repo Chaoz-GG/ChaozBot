@@ -31,6 +31,7 @@ class LeaderBoard(commands.Cog):
             data = json.load(json_file)
             self.lb_channel_id = data['lb_channel_id']
 
+        # Create a Steam WebAPI instance
         self.steamAPI = WebAPI(steam_key)
 
         self.mm_ranks = {
@@ -61,6 +62,7 @@ class LeaderBoard(commands.Cog):
         guild = self.bot.get_guild(whitelist)
         channel = guild.get_channel(channel_id or self.lb_channel_id)
 
+        # Try to load leaderboard message IDs from cache
         if not channel_id:
             with open('data/leaderboard.json') as f:
                 try:
@@ -81,6 +83,7 @@ class LeaderBoard(commands.Cog):
                         'Asia',
                         'Oceania']:
 
+            # Fetch a sorted leaderboard from the database, for the particular region
             lb = sort_lb(region=_region)
 
             if not lb:
@@ -94,6 +97,7 @@ class LeaderBoard(commands.Cog):
             embed.description = ''
 
             for index, lb_data in enumerate(lb):
+                # Fetch the Steam user instance from Steam API
                 # noinspection PyUnresolvedReferences
                 steam_user = self.steamAPI.ISteamUser.GetPlayerSummaries_v2(steamids=lb_data[0])["response"]["players"][
                     0]
@@ -112,6 +116,7 @@ class LeaderBoard(commands.Cog):
                 msg = await channel.send(embed=embed)
 
                 if not channel_id:
+                    # Dump the new leaderboard message IDs into cache
                     with open('data/leaderboard.json', 'w') as f:
                         lb_msgs[_region] = msg.id
                         json.dump(lb_msgs, f)
@@ -119,9 +124,11 @@ class LeaderBoard(commands.Cog):
                 msgs.append(msg)
 
             else:
+                # Fetch the particular region leaderboard message
                 msg = await channel.fetch_message(lb_msgs[_region])
                 await msg.edit(embed=embed)
 
+        # Pin the region-wise leaderboard messages
         for msg in msgs:
             await msg.pin()
 
@@ -200,6 +207,7 @@ class LeaderBoard(commands.Cog):
         embed.description = ''
 
         for index, lb_data in enumerate(lb):
+            # Fetch the Steam user instance from Steam API
             # noinspection PyUnresolvedReferences
             steam_user = self.steamAPI.ISteamUser.GetPlayerSummaries_v2(steamids=lb_data[0])["response"]["players"][0]
 
@@ -224,6 +232,7 @@ class LeaderBoard(commands.Cog):
 
         await log_message(ctx, f'`{ctx.user}` has used the `{ctx.command.name}` command.')
 
+        # Bypass for sudo (administrative) roles
         sudo_roles = []
 
         for sudo_role_id in sudo_role_ids:
@@ -236,9 +245,11 @@ class LeaderBoard(commands.Cog):
         else:
             return await ctx.edit_original_message(content=messages["admin_only"])
 
+        # Publish region-wise leaderboards to the config channel
         if not channel:
             await self.update_lb()
 
+        # Publish region-wise leaderboards to the specified channel
         else:
             await self.update_lb(channel.id)
 
@@ -246,15 +257,22 @@ class LeaderBoard(commands.Cog):
 
     @update_lb.before_loop
     async def _before_update_lb(self):
+        # Wait until the bot is ready before starting the task
         await self.bot.wait_until_ready()
 
-    async def cog_load(self):
+    async def cog_load(self) -> None:
+        # Start the task on cog load
         self.update_lb.start()
+
+    async def cog_unload(self) -> None:
+        # Cancel the task on cog unload
+        self.update_lb.cancel()
 
     # Update leaderboards on member leaving
     # noinspection PyUnusedLocal
     @commands.Cog.listener()
     async def on_member_remove(self, member):
+        # Update all leaderboards if a member leaves the server, in order to ensure no stale information is preserved
         await self.update_lb()
 
 

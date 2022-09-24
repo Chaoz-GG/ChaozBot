@@ -31,6 +31,7 @@ with open('data/messages.json') as _json_file:
     messages = json.load(_json_file)
     messages = messages["admin"]
 
+# Create select options for all the available games
 with open('data/games.json') as json_file:
     games = json.load(json_file)
 
@@ -56,6 +57,7 @@ class UnlinkConfirm(discord.ui.View):
 
         steam_id = get_steam_id(self.member.id)
 
+        # Remove user from database on confirmation
         remove_user(self.member.id, steam_id)
 
         return await self.ctx.edit_original_message(content=messages["profile_unlink_success"].format(self.member),
@@ -87,9 +89,11 @@ class TeamMemberForceAdd(discord.ui.Select):
         team = get_team_by_id(self.values[0])
         steam_id = get_steam_id(self.member.id)
 
+        # Check if the user is already a member in the team
         if check_team_member_exists(team["id"], steam_id):
             return await self.ctx.edit_original_message(content=messages["already_member"], embed=None, view=None)
 
+        # Check if the user is already a substitute  in the team
         if check_team_substitute_exists(team["id"], steam_id):
             return await self.ctx.edit_original_message(content=messages["already_substitute"], embed=None, view=None)
 
@@ -100,15 +104,20 @@ class TeamMemberForceAdd(discord.ui.Select):
             if _game[1][0] == team['active_game']:
                 break
 
+        # Check if the team is full
         # noinspection PyUnboundLocalVariable
         if check_team_members_full(team["id"], _games[_game[0]][1]):
             return await self.ctx.edit_original_message(content=messages["team_full"], embed=None, view=None)
 
+        # Add the user to the team
         add_team_member(team["id"], steam_id, self.member.id)
 
         with suppress(ValueError):
+            # Remove the user from the requested members list
             remove_team_requested_member(team["id"], self.member.id)
+            # Remove the user from the requested substitutes list
             remove_team_requested_substitute(team["id"], self.member.id)
+            # Remove the user from the blacklist
             remove_team_blacklist(team["id"], self.member.id)
 
         await log_message(ctx, messages["team_member_force_add"].format(ctx.user, self.member, team["name"]))
@@ -132,9 +141,11 @@ class TeamSubstituteForceAdd(discord.ui.Select):
         team = get_team_by_id(self.values[0])
         steam_id = get_steam_id(self.substitute.id)
 
+        # Check if the user is already a member in the team
         if check_team_member_exists(team["id"], steam_id):
             return await self.ctx.edit_original_message(content=messages["already_member"], embed=None, view=None)
 
+        # Check if the user is already a substitute  in the team
         if check_team_substitute_exists(team["id"], steam_id):
             return await self.ctx.edit_original_message(content=messages["already_substitute"], embed=None, view=None)
 
@@ -145,15 +156,20 @@ class TeamSubstituteForceAdd(discord.ui.Select):
             if _game[1][0] == team['active_game']:
                 break
 
+        # Check if the team is full
         # noinspection PyUnboundLocalVariable
         if check_team_subsitutes_full(team["id"], _games[_game[0]][1]):
             return await self.ctx.edit_original_message(content=messages["team_full"], embed=None, view=None)
 
+        # Add the user to the team
         add_team_substitute(team["id"], steam_id, self.substitute.id)
 
         with suppress(ValueError):
+            # Remove the user from the requested members list
             remove_team_requested_member(team["id"], self.substitute.id)
+            # Remove the user from the requested substitutes list
             remove_team_requested_substitute(team["id"], self.substitute.id)
+            # Remove the user from the blacklist
             remove_team_blacklist(team["id"], self.substitute.id)
 
         await log_message(ctx, messages["team_substitute_force_add"].format(ctx.user, self.substitute, team["name"]))
@@ -165,6 +181,7 @@ class Admin(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
+        # Create the steam API instance
         self.steamAPI = WebAPI(steam_key)
 
         self.mm_rank_role_ids = mm_rank_role_ids
@@ -190,6 +207,7 @@ class Admin(commands.Cog):
 
         await log_message(ctx, f'`{ctx.user}` has used the `{ctx.command.name}` command.')
 
+        # Bypass for sudo (administrative) roles
         sudo_roles = []
 
         for sudo_role_id in sudo_role_ids:
@@ -218,13 +236,14 @@ class Admin(commands.Cog):
         else:
             favorite_game = None
 
+        # Fetch all the users with the given filters (or the default filters (None) if none were given)
         users = get_all_users(region=region, favorite_game=favorite_game, age=age)
 
         if not users:
             return await ctx.edit_original_message(content=messages["users_not_found"])
 
         embed.title = 'Registered User List'
-        embed.description = f'Total **{len(users)}** registered users with the given constraints.\n\n'
+        embed.description = f'Total **{len(users)}** registered users with the given filters.\n\n'
 
         for user in enumerate(users):
             embed.description += f'`{user[0] + 1}.` {ctx.guild.get_member(user[1][0]).mention} - `{user[1][1]}`\n'
@@ -238,6 +257,7 @@ class Admin(commands.Cog):
 
         await log_message(ctx, f'`{ctx.user}` has used the `{ctx.command.name}` command.')
 
+        # Bypass for sudo (administrative) roles
         sudo_roles = []
 
         for sudo_role_id in sudo_role_ids:
@@ -250,6 +270,7 @@ class Admin(commands.Cog):
         else:
             return await ctx.edit_original_message(content=messages["admin_only"])
 
+        # Check if the profile is already linked
         if already_exists(member.id):
             return await ctx.edit_original_message(content=messages["profile_previously_linked"])
 
@@ -261,21 +282,25 @@ class Admin(commands.Cog):
             if steam_id is None:
                 steam_id = community_id
 
+            # Obtain the steam user instance
             # noinspection PyUnresolvedReferences
             steam_user = self.steamAPI.ISteamUser.GetPlayerSummaries_v2(steamids=steam_id)["response"]["players"][0]
 
             steam_id = SteamID(steam_user["steamid"])
 
+            # Check if the steam ID is already registered with the bot
             if int(steam_user["steamid"]) in get_steam_ids():
                 return await ctx.edit_original_message(content=messages["profile_already_linked"])
 
         except (requests.HTTPError, IndexError):
             return await ctx.edit_original_message(content=messages["profile_not_found"])
 
+        # Add the user to the database
         add_user(member.id, steam_user["steamid"])
 
         await ctx.edit_original_message(content=messages["profile_link_success"])
 
+        # Get game stats for CSGO (app 730)
         # noinspection PyUnresolvedReferences
         game_stats = self.steamAPI.ISteamUserStats.GetUserStatsForGame_v2(steamid=steam_id, appid=730)
 
@@ -287,41 +312,52 @@ class Admin(commands.Cog):
             if game_stat["name"] == 'total_time_played':
                 hours = round(game_stat["value"] / 3600)
 
+        # Update the user's hours in the database
         update_hours(member.id, hours)
 
         async with aiohttp.ClientSession() as session:
+            # Fetch the matchmaking stats of the user, if found
             async with session.get(f'http://localhost:5000/stats/view/mm/{steam_id}') as stats:
                 stats = await stats.json()
 
             if "error" not in stats.keys():
+                # Remove all rank roles
                 for role_id in self.mm_rank_role_ids.values():
                     role = ctx.guild.get_role(role_id)
 
                     if role in member.roles:
                         await member.remove_roles(role)
 
+                # Fetch the relevant rank role
                 rank_role = ctx.guild.get_role(self.mm_rank_role_ids[stats["rank"]])
 
+                # Add the relevant rank role
                 await member.add_roles(rank_role)
 
+            # Fetch the FaceIT stats of the user, if found
             async with session.get(f'http://localhost:5000/stats/view/faceit/{steam_id}') as stats:
                 stats = await stats.json()
 
             if "error" not in stats.keys():
+                # Remove all rank roles
                 for role_id in self.faceit_rank_role_ids.values():
                     role = ctx.guild.get_role(role_id)
 
                     if role in member.roles:
                         await ctx.user.remove_roles(role)
 
+                # Fetch the relevant rank role
                 rank_role = ctx.guild.get_role(self.faceit_rank_role_ids[str(stats["rank"])])
 
+                # Add the relevant rank role
                 await member.add_roles(rank_role)
 
             if "loccountrycode" in steam_user.keys():
                 async with session.get(f'https://restcountries.com/v3.1/alpha/{steam_user["loccountrycode"]}') \
                         as res:
                     res = await res.json()
+
+                # Update the user's country in the database
                 update_country(member.id, res[0]["name"]["common"])
 
                 region = res[0]["region"]
@@ -329,8 +365,10 @@ class Admin(commands.Cog):
                 if region == "Americas":
                     region = res[0]["subregion"]
 
+                # Determine and update the user's region in the database
                 update_region(member.id, region)
 
+                # Remove all region roles
                 for role_id in self.region_role_ids.values():
                     role = ctx.guild.get_role(role_id)
 
@@ -339,8 +377,10 @@ class Admin(commands.Cog):
 
                 region_role_id = self.region_role_ids[region]
 
+                # Fetch the relevant region role
                 region_role = ctx.guild.get_role(region_role_id)
 
+                # Add the relevant region role
                 await member.add_roles(region_role)
 
         return await log_message(ctx, f'`{ctx.user}` force-linked the Steam profile for `{member}`.')
@@ -352,6 +392,7 @@ class Admin(commands.Cog):
 
         await log_message(ctx, f'`{ctx.user}` has used the `{ctx.command.name}` command.')
 
+        # Bypass for sudo (administrative) roles
         sudo_roles = []
 
         for sudo_role_id in sudo_role_ids:
@@ -364,6 +405,7 @@ class Admin(commands.Cog):
         else:
             return await ctx.edit_original_message(content=messages["admin_only"])
 
+        # Check if the profile is already linked
         if already_exists(member.id):
             view = UnlinkConfirm()
             view.ctx = ctx
@@ -386,6 +428,7 @@ class Admin(commands.Cog):
 
         await log_message(ctx, f'`{ctx.user}` has used the `{ctx.command.name}` command.')
 
+        # Bypass for sudo (administrative) roles
         sudo_roles = []
 
         for sudo_role_id in sudo_role_ids:
@@ -398,9 +441,11 @@ class Admin(commands.Cog):
         else:
             return await ctx.edit_original_message(content=messages["admin_only"])
 
+        # Check if the profile is already linked
         if not already_exists(member.id):
             return await ctx.edit_original_message(content=messages["profile_not_linked"])
 
+        # Fetch teams bypassing captain requirement
         teams = get_teams_by_captain_id(-1)
 
         embed = discord.Embed(colour=0xffffff)
@@ -410,16 +455,19 @@ class Admin(commands.Cog):
 
         _options = list()
 
+        # Create all the team select options
         for i, team_details in enumerate(teams, 1):
             embed.description += f'\n`{i}.` {team_details[1]}'
 
             _options.append(discord.SelectOption(label=team_details[1], value=team_details[0]))
 
+        # Determine if a member is being added
         if add_type.value == 1:
             item = TeamMemberForceAdd(options=_options)
             item.ctx = ctx
             item.member = member
 
+        # Determine if a substitute is being added
         else:
             item = TeamSubstituteForceAdd(options=_options)
             item.ctx = ctx
@@ -437,6 +485,7 @@ class Admin(commands.Cog):
 
         await log_message(ctx, f'`{ctx.user}` has used the `{ctx.command.name}` command.')
 
+        # Bypass for sudo (administrative) roles
         sudo_roles = []
 
         for sudo_role_id in sudo_role_ids:
@@ -449,6 +498,7 @@ class Admin(commands.Cog):
         else:
             return await ctx.edit_original_message(content=messages["admin_only"])
 
+        # Remove all users from the database who have left the server
         for steam_id in get_steam_ids():
             user_id = get_user_id(steam_id)
             member = ctx.guild.get_member(user_id)

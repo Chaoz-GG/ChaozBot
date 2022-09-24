@@ -14,6 +14,7 @@ class Events(commands.Cog):
 
     @commands.Cog.listener()
     async def on_ready(self):
+        # Sync the slash commands with the whitelisted guild
         await self.bot.tree.sync(guild=discord.Object(id=self.whitelist))
 
     # Leave unexpected servers

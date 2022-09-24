@@ -33,6 +33,7 @@ class General(commands.Cog):
 
         embed.title = 'Pong!'
 
+        # Obtain the gateway latency
         ms = self.bot.latency * 1000
 
         embed.add_field(name='API latency (Heartbeat)', value=f'`{int(ms)} ms`')
@@ -43,6 +44,7 @@ class General(commands.Cog):
 
         t2 = datetime.utcnow().strftime("%f")
 
+        # Calculate the round trip latency
         diff = int(math.fabs((int(t2) - int(t1)) / 1000))
 
         embed.add_field(name='Bot latency (Round-trip)', value=f'`{diff} ms`')
