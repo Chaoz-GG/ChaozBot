@@ -353,11 +353,11 @@ class Team(ui.Modal, title='New Chaoz Team'):
 
         # Check if the team name is already taken
         if self.name.value in get_all_team_names():
-            return await ctx.edit_original_response(content=messages["team_name_exists"])
+            return await ctx.edit_original_message(content=messages["team_name_exists"])
 
         # Check if the team abbreviation is already taken
         if self.abbreviation.value.upper() in get_all_team_abbreviations():
-            return await ctx.edit_original_response(content=messages["team_abbreviation_exists"])
+            return await ctx.edit_original_message(content=messages["team_abbreviation_exists"])
 
         # Generate a random team ID
         team_id = ''.join(random.choices(string.ascii_uppercase + string.digits, k=10))
@@ -431,7 +431,7 @@ class Team(ui.Modal, title='New Chaoz Team'):
         await log_message(ctx, f'`{ctx.user}` has created a new team `{self.name.value}`.')
 
         # Notify the user of successful team creation
-        return await ctx.edit_original_response(content=messages["team_created"].format(self.name.value))
+        return await ctx.edit_original_message(content=messages["team_created"].format(self.name.value))
 
 
 class Edit(ui.Modal, title='Edit Team'):
@@ -500,7 +500,7 @@ class Edit(ui.Modal, title='Edit Team'):
         await log_message(ctx, f'`{self.ctx.user}` has edited team `{team["name"]}`.')
         
         # Notify the user of successful update
-        return await self.ctx.edit_original_response(content=messages["team_updated"].format(team["name"]),
+        return await self.ctx.edit_original_message(content=messages["team_updated"].format(team["name"]),
                                                     embed=None, view=None)
 
 
@@ -521,7 +521,7 @@ class MemberSelect(discord.ui.Select):
         await log_message(ctx, f'`{self.ctx.user}` has removed member `{self.values[0]}` '
                                f'from team `{get_team_by_id(self.team_id)["name"]}`.')
 
-        await self.ctx.edit_original_response(content=messages["action_success"], embed=None, view=None)
+        await self.ctx.edit_original_message(content=messages["action_success"], embed=None, view=None)
 
 
 class SubstituteSelect(discord.ui.Select):
@@ -542,7 +542,7 @@ class SubstituteSelect(discord.ui.Select):
         await log_message(ctx, f'`{self.ctx.user}` has removed substitute `{self.values[0]}` '
                                f'from team `{get_team_by_id(self.team_id)["name"]}`.')
 
-        await self.ctx.edit_original_response(content=messages["action_success"], embed=None, view=None)
+        await self.ctx.edit_original_message(content=messages["action_success"], embed=None, view=None)
 
 
 class BlacklistSelect(discord.ui.Select):
@@ -563,7 +563,7 @@ class BlacklistSelect(discord.ui.Select):
         await log_message(ctx, f'`{self.ctx.user}` has removed blacklisted user `{self.values[0]}` '
                                f'from team `{get_team_by_id(self.team_id)["name"]}`.')
 
-        await self.ctx.edit_original_response(content=messages["action_success"], embed=None, view=None)
+        await self.ctx.edit_original_message(content=messages["action_success"], embed=None, view=None)
 
 
 class TeamCPSelect(discord.ui.Select):
@@ -582,7 +582,7 @@ class TeamCPSelect(discord.ui.Select):
         view.ctx = ctx
         view.team_id = self.values[0]
 
-        await ctx.edit_original_response(content=messages["action_select"], embed=None, view=view)
+        await ctx.edit_original_message(content=messages["action_select"], embed=None, view=view)
 
 
 class TeamLogoSelect(discord.ui.Select):
@@ -596,7 +596,7 @@ class TeamLogoSelect(discord.ui.Select):
     async def callback(self, ctx: discord.Interaction):
         await ctx.response.defer()
 
-        await self.ctx.edit_original_response(content='Updating logo ...', embed=None, view=None)
+        await self.ctx.edit_original_message(content='Updating logo ...', embed=None, view=None)
 
         # Create SFTP connection to the server
         key = paramiko.RSAKey.from_private_key_file(sftp_pvt_key, password=sftp_pvt_key_password)
@@ -626,7 +626,7 @@ class TeamLogoSelect(discord.ui.Select):
         await log_message(self.ctx, f'`{self.ctx.user}` has updated the logo for `{team["name"]}`.')
 
         # Notify the user of successful team logo update
-        await self.ctx.edit_original_response(content=messages["logo_updated"], embed=None, view=None)
+        await self.ctx.edit_original_message(content=messages["logo_updated"], embed=None, view=None)
 
 
 class TeamEmbedPublish(discord.ui.Select):
@@ -640,7 +640,7 @@ class TeamEmbedPublish(discord.ui.Select):
         await ctx.response.defer()
 
         # Send a notification for team embed publishing initialization
-        await self.ctx.edit_original_response(content=messages["embeds_publishing"], embed=None, view=None)
+        await self.ctx.edit_original_message(content=messages["embeds_publishing"], embed=None, view=None)
 
         # Iterate through all the team IDs selected
         for team_id in self.values:
@@ -691,7 +691,7 @@ class TeamEmbedPublish(discord.ui.Select):
             await log_message(self.ctx, f'`{self.ctx.user}` has published the embed for `{team["name"]}`.')
 
         # Notify the user of successful team embed publishing
-        await self.ctx.edit_original_response(content=messages["embeds_published"], embed=None, view=None)
+        await self.ctx.edit_original_message(content=messages["embeds_published"], embed=None, view=None)
 
 
 class DeleteConfirm(discord.ui.View):
@@ -743,7 +743,7 @@ class DeleteConfirm(discord.ui.View):
         remove_team(self.team_id)
 
         # Notify the user of successful team deletion
-        await self.ctx.edit_original_response(content=messages["action_success"], view=None)
+        await self.ctx.edit_original_message(content=messages["action_success"], view=None)
 
     # noinspection PyUnusedLocal
     @discord.ui.button(label='\u274C',
@@ -752,7 +752,7 @@ class DeleteConfirm(discord.ui.View):
     async def _cancel(self, ctx: discord.Interaction, button: discord.ui.Button):
         await ctx.response.defer()
 
-        await self.ctx.edit_original_response(content=messages["action_cancel"], view=None)
+        await self.ctx.edit_original_message(content=messages["action_cancel"], view=None)
 
 
 class CP(discord.ui.View):
@@ -832,7 +832,7 @@ class CP(discord.ui.View):
 
         # If there are no members to remove after removing the captain, notify the user
         if not member_data:
-            await self.ctx.edit_original_response(content=messages["no_member_data"], view=None)
+            await self.ctx.edit_original_message(content=messages["no_member_data"], view=None)
 
         # Create the removal select options list for the remaining members of the team
         i = 1
@@ -857,7 +857,7 @@ class CP(discord.ui.View):
         view = discord.ui.View()
         view.add_item(item)
 
-        await self.ctx.edit_original_response(embed=embed, view=view)
+        await self.ctx.edit_original_message(embed=embed, view=view)
 
     # noinspection PyUnusedLocal
     @discord.ui.button(label='Manage Substitutes',
@@ -876,7 +876,7 @@ class CP(discord.ui.View):
 
         # If there are no substitutes to remove, notify the user
         if not substitute_data:
-            await self.ctx.edit_original_response(content=messages["no_substitute_data"], view=None)
+            await self.ctx.edit_original_message(content=messages["no_substitute_data"], view=None)
 
         # Create the removal select options list for the remaining substitutes of the team
         i = 1
@@ -901,7 +901,7 @@ class CP(discord.ui.View):
         view = discord.ui.View()
         view.add_item(item)
 
-        await self.ctx.edit_original_response(embed=embed, view=view)
+        await self.ctx.edit_original_message(embed=embed, view=view)
 
     # noinspection PyUnusedLocal
     @discord.ui.button(label='Manage Blacklist',
@@ -920,7 +920,7 @@ class CP(discord.ui.View):
 
         # If there are no blacklisted users to remove, notify the user
         if not blacklist_data:
-            await self.ctx.edit_original_response(content=messages["no_blacklist_data"], view=None)
+            await self.ctx.edit_original_message(content=messages["no_blacklist_data"], view=None)
 
         # Create the removal select options list for the remaining blacklisted users of the team
         i = 1
@@ -942,7 +942,7 @@ class CP(discord.ui.View):
         view = discord.ui.View()
         view.add_item(item)
 
-        await self.ctx.edit_original_response(embed=embed, view=view)
+        await self.ctx.edit_original_message(embed=embed, view=view)
 
     # noinspection PyUnusedLocal
     @discord.ui.button(label='Delete Team',
@@ -957,7 +957,7 @@ class CP(discord.ui.View):
         view.ctx = self.ctx
         view.team_id = self.team_id
 
-        await self.ctx.edit_original_response(content=messages["delete_confirm"], view=view)
+        await self.ctx.edit_original_message(content=messages["delete_confirm"], view=view)
 
 
 class Create(discord.ui.View):
@@ -1071,7 +1071,7 @@ To create a new team, press the \u2795 button.
 
         # Check if the user is a captain of any team
         if not teams:
-            return await ctx.edit_original_response(content=messages["no_captain"])
+            return await ctx.edit_original_message(content=messages["no_captain"])
 
         embed = discord.Embed(colour=0xffffff)
 
@@ -1092,7 +1092,7 @@ To create a new team, press the \u2795 button.
         view = discord.ui.View()
         view.add_item(item)
 
-        await ctx.edit_original_response(embed=embed, view=view)
+        await ctx.edit_original_message(embed=embed, view=view)
 
     @app_commands.command(name='teamlogo', description='Upload team logo.')
     @app_commands.guilds(whitelist)
@@ -1119,7 +1119,7 @@ To create a new team, press the \u2795 button.
 
         # Check if the user is a captain of any team
         if not teams:
-            return await ctx.edit_original_response(content=messages["no_captain"])
+            return await ctx.edit_original_message(content=messages["no_captain"])
 
         # Read the logo from the attachment
         _logo = io.BytesIO(await logo.read())
@@ -1144,7 +1144,7 @@ To create a new team, press the \u2795 button.
         view = discord.ui.View()
         view.add_item(item)
 
-        await ctx.edit_original_response(embed=embed, view=view)
+        await ctx.edit_original_message(embed=embed, view=view)
 
     @app_commands.command(name='teaminfo', description='Team Information.')
     @app_commands.guilds(whitelist)
@@ -1159,7 +1159,7 @@ To create a new team, press the \u2795 button.
 
         # Check if the team exists
         if not team:
-            return await ctx.edit_original_response(content=messages["team_not_found"])
+            return await ctx.edit_original_message(content=messages["team_not_found"])
 
         embed = discord.Embed(colour=0xffffff)
 
@@ -1195,7 +1195,7 @@ To create a new team, press the \u2795 button.
         view = Options()
         view.team = team
 
-        await ctx.edit_original_response(embed=embed, view=view)
+        await ctx.edit_original_message(embed=embed, view=view)
 
     @app_commands.command(name='publish_teams', description='Publish the embed for team(s).')
     @app_commands.guilds(whitelist)
@@ -1215,7 +1215,7 @@ To create a new team, press the \u2795 button.
                 break
 
         else:
-            return await ctx.edit_original_response(content=messages["admin_only"])
+            return await ctx.edit_original_message(content=messages["admin_only"])
 
         # Fetch all the teams bypassing the captain requirement
         teams = get_teams_by_captain_id(-1)
@@ -1239,7 +1239,7 @@ To create a new team, press the \u2795 button.
         view = discord.ui.View()
         view.add_item(item)
 
-        await ctx.edit_original_response(embed=embed, view=view)
+        await ctx.edit_original_message(embed=embed, view=view)
 
 
 async def setup(bot):
