@@ -60,7 +60,7 @@ class UnlinkConfirm(discord.ui.View):
         # Remove user from database on confirmation
         remove_user(self.member.id, steam_id)
 
-        return await self.ctx.edit_original_message(content=messages["profile_unlink_success"].format(self.member),
+        return await self.ctx.edit_original_response(content=messages["profile_unlink_success"].format(self.member),
                                                     view=None)
 
     # noinspection PyUnusedLocal
@@ -70,7 +70,7 @@ class UnlinkConfirm(discord.ui.View):
     async def _cancel(self, ctx: discord.Interaction, button: discord.ui.Button):
         await ctx.response.defer()
 
-        await self.ctx.edit_original_message(content=messages["action_cancel"], view=None)
+        await self.ctx.edit_original_response(content=messages["action_cancel"], view=None)
 
 
 class TeamMemberForceAdd(discord.ui.Select):
@@ -91,11 +91,11 @@ class TeamMemberForceAdd(discord.ui.Select):
 
         # Check if the user is already a member in the team
         if check_team_member_exists(team["id"], steam_id):
-            return await self.ctx.edit_original_message(content=messages["already_member"], embed=None, view=None)
+            return await self.ctx.edit_original_response(content=messages["already_member"], embed=None, view=None)
 
         # Check if the user is already a substitute  in the team
         if check_team_substitute_exists(team["id"], steam_id):
-            return await self.ctx.edit_original_message(content=messages["already_substitute"], embed=None, view=None)
+            return await self.ctx.edit_original_response(content=messages["already_substitute"], embed=None, view=None)
 
         with open('data/games.json') as f:
             _games = json.load(f)
@@ -107,7 +107,7 @@ class TeamMemberForceAdd(discord.ui.Select):
         # Check if the team is full
         # noinspection PyUnboundLocalVariable
         if check_team_members_full(team["id"], _games[_game[0]][1]):
-            return await self.ctx.edit_original_message(content=messages["team_full"], embed=None, view=None)
+            return await self.ctx.edit_original_response(content=messages["team_full"], embed=None, view=None)
 
         # Add the user to the team
         add_team_member(team["id"], steam_id, self.member.id)
@@ -122,7 +122,7 @@ class TeamMemberForceAdd(discord.ui.Select):
 
         await log_message(ctx, messages["team_member_force_add"].format(ctx.user, self.member, team["name"]))
 
-        await self.ctx.edit_original_message(content=messages["action_success"], embed=None, view=None)
+        await self.ctx.edit_original_response(content=messages["action_success"], embed=None, view=None)
 
 
 class TeamSubstituteForceAdd(discord.ui.Select):
@@ -143,11 +143,11 @@ class TeamSubstituteForceAdd(discord.ui.Select):
 
         # Check if the user is already a member in the team
         if check_team_member_exists(team["id"], steam_id):
-            return await self.ctx.edit_original_message(content=messages["already_member"], embed=None, view=None)
+            return await self.ctx.edit_original_response(content=messages["already_member"], embed=None, view=None)
 
         # Check if the user is already a substitute  in the team
         if check_team_substitute_exists(team["id"], steam_id):
-            return await self.ctx.edit_original_message(content=messages["already_substitute"], embed=None, view=None)
+            return await self.ctx.edit_original_response(content=messages["already_substitute"], embed=None, view=None)
 
         with open('data/games.json') as f:
             _games = json.load(f)
@@ -159,7 +159,7 @@ class TeamSubstituteForceAdd(discord.ui.Select):
         # Check if the team is full
         # noinspection PyUnboundLocalVariable
         if check_team_subsitutes_full(team["id"], _games[_game[0]][1]):
-            return await self.ctx.edit_original_message(content=messages["team_full"], embed=None, view=None)
+            return await self.ctx.edit_original_response(content=messages["team_full"], embed=None, view=None)
 
         # Add the user to the team
         add_team_substitute(team["id"], steam_id, self.substitute.id)
@@ -174,7 +174,7 @@ class TeamSubstituteForceAdd(discord.ui.Select):
 
         await log_message(ctx, messages["team_substitute_force_add"].format(ctx.user, self.substitute, team["name"]))
 
-        await self.ctx.edit_original_message(content=messages["action_success"], embed=None, view=None)
+        await self.ctx.edit_original_response(content=messages["action_success"], embed=None, view=None)
 
 
 class Admin(commands.Cog):
@@ -218,7 +218,7 @@ class Admin(commands.Cog):
                 break
 
         else:
-            return await ctx.edit_original_message(content=messages["admin_only"])
+            return await ctx.edit_original_response(content=messages["admin_only"])
 
         embed = discord.Embed(colour=self.bot.embed_colour)
 
@@ -240,7 +240,7 @@ class Admin(commands.Cog):
         users = get_all_users(region=region, favorite_game=favorite_game, age=age)
 
         if not users:
-            return await ctx.edit_original_message(content=messages["users_not_found"])
+            return await ctx.edit_original_response(content=messages["users_not_found"])
 
         embed.title = 'Registered User List'
         embed.description = f'Total **{len(users)}** registered users with the given filters.\n\n'
@@ -248,7 +248,7 @@ class Admin(commands.Cog):
         for user in enumerate(users):
             embed.description += f'`{user[0] + 1}.` {ctx.guild.get_member(user[1][0]).mention} - `{user[1][1]}`\n'
 
-        await ctx.edit_original_message(embed=embed)
+        await ctx.edit_original_response(embed=embed)
 
     @app_commands.command(name='forcelink', description='Force links your Steam profile with the bot (admin-only).')
     @app_commands.guilds(whitelist)
@@ -268,11 +268,11 @@ class Admin(commands.Cog):
                 break
 
         else:
-            return await ctx.edit_original_message(content=messages["admin_only"])
+            return await ctx.edit_original_response(content=messages["admin_only"])
 
         # Check if the profile is already linked
         if already_exists(member.id):
-            return await ctx.edit_original_message(content=messages["profile_previously_linked"])
+            return await ctx.edit_original_response(content=messages["profile_previously_linked"])
 
         try:
             # noinspection PyUnresolvedReferences
@@ -290,15 +290,15 @@ class Admin(commands.Cog):
 
             # Check if the steam ID is already registered with the bot
             if int(steam_user["steamid"]) in get_steam_ids():
-                return await ctx.edit_original_message(content=messages["profile_already_linked"])
+                return await ctx.edit_original_response(content=messages["profile_already_linked"])
 
         except (requests.HTTPError, IndexError):
-            return await ctx.edit_original_message(content=messages["profile_not_found"])
+            return await ctx.edit_original_response(content=messages["profile_not_found"])
 
         # Add the user to the database
         add_user(member.id, steam_user["steamid"])
 
-        await ctx.edit_original_message(content=messages["profile_link_success"])
+        await ctx.edit_original_response(content=messages["profile_link_success"])
 
         # Get game stats for CSGO (app 730)
         # noinspection PyUnresolvedReferences
@@ -403,7 +403,7 @@ class Admin(commands.Cog):
                 break
 
         else:
-            return await ctx.edit_original_message(content=messages["admin_only"])
+            return await ctx.edit_original_response(content=messages["admin_only"])
 
         # Check if the profile is already linked
         if already_exists(member.id):
@@ -411,10 +411,10 @@ class Admin(commands.Cog):
             view.ctx = ctx
             view.member = member
 
-            return await ctx.edit_original_message(content='Would you like to proceed?', view=view)
+            return await ctx.edit_original_response(content='Would you like to proceed?', view=view)
 
         else:
-            return await ctx.edit_original_message(content=messages["profile_not_linked"])
+            return await ctx.edit_original_response(content=messages["profile_not_linked"])
 
     @app_commands.command(name='forceadd', description='Force adds a member / substitute to a particular team '
                                                        '(admin-only).')
@@ -439,11 +439,11 @@ class Admin(commands.Cog):
                 break
 
         else:
-            return await ctx.edit_original_message(content=messages["admin_only"])
+            return await ctx.edit_original_response(content=messages["admin_only"])
 
         # Check if the profile is already linked
         if not already_exists(member.id):
-            return await ctx.edit_original_message(content=messages["profile_not_linked"])
+            return await ctx.edit_original_response(content=messages["profile_not_linked"])
 
         # Fetch teams bypassing captain requirement
         teams = get_teams_by_captain_id(-1)
@@ -476,7 +476,7 @@ class Admin(commands.Cog):
         view = discord.ui.View()
         view.add_item(item)
 
-        await ctx.edit_original_message(embed=embed, view=view)
+        await ctx.edit_original_response(embed=embed, view=view)
 
     @app_commands.command(name='prune_users', description='Prune users who have left the server (admin-only).')
     @app_commands.guilds(whitelist)
@@ -496,7 +496,7 @@ class Admin(commands.Cog):
                 break
 
         else:
-            return await ctx.edit_original_message(content=messages["admin_only"])
+            return await ctx.edit_original_response(content=messages["admin_only"])
 
         # Remove all users from the database who have left the server
         for steam_id in get_steam_ids():

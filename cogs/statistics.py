@@ -85,7 +85,7 @@ class Statistics(commands.Cog):
 
         # Check if the user has linked their Steam account with the bot first
         if not already_exists(member.id):
-            return await ctx.edit_original_message(content=messages["profile_not_linked"])
+            return await ctx.edit_original_response(content=messages["profile_not_linked"])
 
         else:
             steam_id = get_steam_id(member.id)
@@ -96,7 +96,7 @@ class Statistics(commands.Cog):
                     stats = await stats.json()
 
                 if "error" in stats.keys():
-                    return await ctx.edit_original_message(content=messages["mm_stats_not_found"])
+                    return await ctx.edit_original_response(content=messages["mm_stats_not_found"])
 
                 # noinspection PyUnresolvedReferences
                 # Fetch the Steam profile instance of the user
@@ -224,7 +224,7 @@ Most Played Map:
                 # Add the relevant rank role to the user
                 await member.add_roles(rank_role)
 
-                await ctx.edit_original_message(attachments=[file], embed=embed)
+                await ctx.edit_original_response(attachments=[file], embed=embed)
 
     @app_commands.command(name='faceitstats',
                           description='Shows the FaceIT statistics of the author / the mentioned user, if found.')
@@ -239,7 +239,7 @@ Most Played Map:
 
         # Check if the user has linked their Steam account with the bot first
         if not already_exists(member.id):
-            return await ctx.edit_original_message(content=messages["profile_not_linked"])
+            return await ctx.edit_original_response(content=messages["profile_not_linked"])
 
         else:
             steam_id = get_steam_id(member.id)
@@ -250,7 +250,7 @@ Most Played Map:
                     stats = await stats.json()
 
                 if "error" in stats.keys():
-                    return await ctx.edit_original_message(content=messages["faceit_stats_not_found"])
+                    return await ctx.edit_original_response(content=messages["faceit_stats_not_found"])
 
                 # noinspection PyUnresolvedReferences
                 # Fetch the Steam profile instance of the user
@@ -387,7 +387,7 @@ Most Played Map:
                 # Add the FaceIT rank role to the user
                 await member.add_roles(rank_role)
 
-                await ctx.edit_original_message(attachments=[file], embed=embed)
+                await ctx.edit_original_response(attachments=[file], embed=embed)
 
     @app_commands.command(name='update',
                           description='Updates the CSGO Matchmaking / FaceIT statistics of the user, if available.')
@@ -408,7 +408,7 @@ Most Played Map:
                 break
 
         else:
-            return await ctx.edit_original_message(content=messages["admin_only"])
+            return await ctx.edit_original_response(content=messages["admin_only"])
 
         # If no member is specified, use the author of the command
         if not member:
@@ -416,7 +416,7 @@ Most Played Map:
 
         # Check if the user has linked his Steam account with the bot first
         if not already_exists(member.id):
-            return await ctx.edit_original_message(content=messages["profile_not_linked"])
+            return await ctx.edit_original_response(content=messages["profile_not_linked"])
 
         else:
             steam_id = get_steam_id(member.id)
@@ -520,7 +520,7 @@ Most Played Map:
 
             await log_message(ctx, f'`{ctx.user}` has requested a stats update for `{member}`.')
 
-            return await ctx.edit_original_message(content=messages["stats_updated"])
+            return await ctx.edit_original_response(content=messages["stats_updated"])
 
 
 async def setup(bot):

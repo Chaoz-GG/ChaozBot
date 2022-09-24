@@ -197,7 +197,7 @@ class LeaderBoard(commands.Cog):
             lb = sort_lb(region.name)
 
         if not lb:
-            return await ctx.edit_original_message(content=messages["region_stats_unavailable"].format(region.name))
+            return await ctx.edit_original_response(content=messages["region_stats_unavailable"].format(region.name))
 
         embed = discord.Embed(colour=self.bot.embed_colour)
 
@@ -223,7 +223,7 @@ class LeaderBoard(commands.Cog):
             else:
                 embed.description += f' - MM: `{lb_data[2]}`, FaceIT: `{lb_data[3]}`'
 
-        await ctx.edit_original_message(embed=embed)
+        await ctx.edit_original_response(embed=embed)
 
     @app_commands.command(name='publish_lb', description='Publish the region-wise leaderboards.')
     @app_commands.guilds(whitelist)
@@ -243,7 +243,7 @@ class LeaderBoard(commands.Cog):
                 break
 
         else:
-            return await ctx.edit_original_message(content=messages["admin_only"])
+            return await ctx.edit_original_response(content=messages["admin_only"])
 
         # Publish region-wise leaderboards to the config channel
         if not channel:
@@ -253,7 +253,7 @@ class LeaderBoard(commands.Cog):
         else:
             await self.update_lb(channel.id)
 
-        await ctx.edit_original_message(content=messages["leaderboards_published"])
+        await ctx.edit_original_response(content=messages["leaderboards_published"])
 
     @update_lb.before_loop
     async def _before_update_lb(self):

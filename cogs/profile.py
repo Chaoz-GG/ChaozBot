@@ -72,7 +72,7 @@ class ProfileForm(ui.Modal, title='Profile Update'):
                 birthday = datetime.strptime(birthday, "%d%m%Y").date()
 
             except ValueError:
-                return await ctx.edit_original_message(content=messages["birthday_invalid"])
+                return await ctx.edit_original_response(content=messages["birthday_invalid"])
 
             update_birthday(ctx.user.id, birthday)
 
@@ -81,7 +81,7 @@ class ProfileForm(ui.Modal, title='Profile Update'):
                 timezones = json.load(f)
 
             if self.timezone.value not in timezones:
-                return await ctx.edit_original_message(content=messages["timezone_invalid"])
+                return await ctx.edit_original_response(content=messages["timezone_invalid"])
 
             update_timezone(ctx.user.id, self.timezone.value)
 
@@ -105,7 +105,7 @@ class ProfileForm(ui.Modal, title='Profile Update'):
 
             update_favorite_games(ctx.user.id, "|".join(_games))
 
-        return await ctx.edit_original_message(content=messages["profile_updated"])
+        return await ctx.edit_original_response(content=messages["profile_updated"])
 
 
 class UnlinkConfirm(discord.ui.View):
@@ -126,7 +126,7 @@ class UnlinkConfirm(discord.ui.View):
 
         remove_user(self.member.id, steam_id)
 
-        return await self.ctx.edit_original_message(content=messages["profile_unlink_success"], view=None)
+        return await self.ctx.edit_original_response(content=messages["profile_unlink_success"], view=None)
 
     # noinspection PyUnusedLocal
     @discord.ui.button(label='\u274C',
@@ -135,7 +135,7 @@ class UnlinkConfirm(discord.ui.View):
     async def _cancel(self, ctx: discord.Interaction, button: discord.ui.Button):
         await ctx.response.defer()
 
-        await self.ctx.edit_original_message(content=messages["action_cancel"], view=None)
+        await self.ctx.edit_original_response(content=messages["action_cancel"], view=None)
 
 
 class Profile(commands.Cog):
@@ -159,7 +159,7 @@ class Profile(commands.Cog):
             member = ctx.user
 
         if not already_exists(member.id):
-            return await ctx.edit_original_message(content=messages["profile_not_linked"])
+            return await ctx.edit_original_response(content=messages["profile_not_linked"])
 
         steam_id = get_steam_id(member.id)
 
@@ -185,7 +185,7 @@ class Profile(commands.Cog):
             embed.set_author(name='Chaoz Gaming', icon_url=chaoz_logo_url)
             embed.set_thumbnail(url=steam_user["avatarfull"])
 
-            return await ctx.edit_original_message(embed=embed)
+            return await ctx.edit_original_response(embed=embed)
 
         # noinspection PyUnresolvedReferences
         group_count = len(self.steamAPI.ISteamUser.GetUserGroupList_v1(steamid=steam_id)["response"]["groups"])
@@ -240,7 +240,7 @@ class Profile(commands.Cog):
         embed.set_author(name='Chaoz Gaming', icon_url=chaoz_logo_url)
         embed.set_thumbnail(url=steam_user["avatarfull"])
 
-        await ctx.edit_original_message(embed=embed)
+        await ctx.edit_original_response(embed=embed)
 
     @app_commands.command(name='link', description='Links your Steam profile with the bot.')
     @app_commands.guilds(whitelist)
@@ -250,7 +250,7 @@ class Profile(commands.Cog):
         await log_message(ctx, f'`{ctx.user}` has used the `{ctx.command.name}` command.')
 
         if already_exists(ctx.user.id):
-            return await ctx.edit_original_message(content=messages["profile_previously_linked"])
+            return await ctx.edit_original_response(content=messages["profile_previously_linked"])
 
         try:
             # noinspection PyUnresolvedReferences
@@ -266,16 +266,16 @@ class Profile(commands.Cog):
             steam_id = SteamID(steam_user["steamid"])
 
             if int(steam_user["steamid"]) in get_steam_ids():
-                return await ctx.edit_original_message(content=messages["profile_already_linked"])
+                return await ctx.edit_original_response(content=messages["profile_already_linked"])
 
         except (requests.HTTPError, IndexError):
-            return await ctx.edit_original_message(content=messages["profile_not_found"])
+            return await ctx.edit_original_response(content=messages["profile_not_found"])
 
         if not has_generated_token(ctx.user.id):
             _token = generate_token()
             initiate_auth(ctx.user.id, _token)
 
-            return await ctx.edit_original_message(content=messages["auth_add_token"].format(_token))
+            return await ctx.edit_original_response(content=messages["auth_add_token"].format(_token))
 
         else:
             _token = get_token(ctx.user.id)
@@ -284,7 +284,7 @@ class Profile(commands.Cog):
                 add_user(ctx.user.id, steam_user["steamid"])
                 cleanup_auth(ctx.user.id)
 
-                await ctx.edit_original_message(content=messages["profile_link_success"])
+                await ctx.edit_original_response(content=messages["profile_link_success"])
 
                 # noinspection PyUnresolvedReferences
                 game_stats = self.steamAPI.ISteamUserStats.GetUserStatsForGame_v2(steamid=steam_id, appid=730)
@@ -356,7 +356,7 @@ class Profile(commands.Cog):
                 return await log_message(ctx, f'`{ctx.user}` have linked their Steam profile.')
 
             else:
-                return await ctx.edit_original_message(content=messages["auth_token_undetected"].format(_token))
+                return await ctx.edit_original_response(content=messages["auth_token_undetected"].format(_token))
 
     @app_commands.command(name='unlink', description='De-links your Steam profile from the bot.')
     @app_commands.guilds(whitelist)
@@ -370,10 +370,10 @@ class Profile(commands.Cog):
             view.ctx = ctx
             view.member = ctx.user
 
-            return await ctx.edit_original_message(content='Would you like to proceed?', view=view)
+            return await ctx.edit_original_response(content='Would you like to proceed?', view=view)
 
         else:
-            return await ctx.edit_original_message(content=messages["profile_not_linked"])
+            return await ctx.edit_original_response(content=messages["profile_not_linked"])
 
     @app_commands.command(name='setup', description='Setup your profile.')
     @app_commands.guilds(whitelist)
@@ -381,7 +381,7 @@ class Profile(commands.Cog):
         await log_message(ctx, f'`{ctx.user}` has used the `{ctx.command.name}` command.')
 
         if not already_exists(ctx.user.id):
-            return await ctx.edit_original_message(content=messages["profile_not_linked"])
+            return await ctx.edit_original_response(content=messages["profile_not_linked"])
 
         modal = ProfileForm()
 
@@ -418,15 +418,15 @@ class Profile(commands.Cog):
             steam_user = self.steamAPI.ISteamUser.GetPlayerSummaries_v2(steamids=steam_id)["response"]["players"][0]
 
             if "loccountrycode" in steam_user.keys():
-                return await ctx.edit_original_message(content=messages["country_link_warning"])
+                return await ctx.edit_original_response(content=messages["country_link_warning"])
 
             if len(country) > 25:
-                return await ctx.edit_original_message(content=messages["country_too_long"])
+                return await ctx.edit_original_response(content=messages["country_too_long"])
 
             async with aiohttp.ClientSession() as session:
                 async with session.get(f'https://restcountries.com/v3.1/name/{country}') as res:
                     if res.status == 404:
-                        return await ctx.edit_original_message(content='Invalid country name.')
+                        return await ctx.edit_original_response(content='Invalid country name.')
 
                     res = await res.json()
 
@@ -451,10 +451,10 @@ class Profile(commands.Cog):
 
             await ctx.user.add_roles(region_role)
 
-            return await ctx.edit_original_message(content=messages["country_updated"])
+            return await ctx.edit_original_response(content=messages["country_updated"])
 
         else:
-            return await ctx.edit_original_message(content=messages["profile_not_linked"])
+            return await ctx.edit_original_response(content=messages["profile_not_linked"])
 
     @app_commands.command(name='inv',
                           description='Calculates the inventory value of the author / the mentioned user, if found.')
@@ -468,7 +468,7 @@ class Profile(commands.Cog):
             member = ctx.user
 
         if not already_exists(member.id):
-            return await ctx.edit_original_message(content=messages["profile_not_linked"])
+            return await ctx.edit_original_response(content=messages["profile_not_linked"])
 
         else:
             steam_id = get_steam_id(member.id)
@@ -478,7 +478,7 @@ class Profile(commands.Cog):
                     inv = await inv.json()
 
             if "error" in inv.keys():
-                return await ctx.edit_original_message(content=messages["inventory_error"])
+                return await ctx.edit_original_response(content=messages["inventory_error"])
 
             # noinspection PyUnresolvedReferences
             steam_user = self.steamAPI.ISteamUser.GetPlayerSummaries_v2(steamids=steam_id)["response"]["players"][0]
@@ -499,7 +499,7 @@ class Profile(commands.Cog):
                                   url=f'https://steamcommunity.com/profiles/{steam_id}/inventory/')
             )
 
-            await ctx.edit_original_message(embed=embed, view=view)
+            await ctx.edit_original_response(embed=embed, view=view)
 
     @app_commands.command(name='user',
                           description='Displays the profile of the author / the mentioned user, if found.')
@@ -513,7 +513,7 @@ class Profile(commands.Cog):
             member = ctx.user
 
         if not already_exists(member.id):
-            return await ctx.edit_original_message(content=messages["profile_not_linked"])
+            return await ctx.edit_original_response(content=messages["profile_not_linked"])
 
         else:
             user = get_user(member.id)
@@ -535,7 +535,7 @@ class Profile(commands.Cog):
 
             embed.set_footer(text='Use `/profile` to update your profile information.')
 
-            await ctx.edit_original_message(embed=embed)
+            await ctx.edit_original_response(embed=embed)
 
     @tasks.loop(hours=24)
     async def wish_users(self):
