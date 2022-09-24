@@ -60,35 +60,43 @@ class ProfileForm(ui.Modal, title='Profile Update'):
         with open('data/games.json') as f:
             games = json.load(f)
 
+        # Create a list with all the available game role IDs
         game_role_ids = list()
 
         for game in games.values():
             game_role_ids.append(game[4])
 
         if self.birthday.value:
+            # Get the birthday string in the correct format
             birthday = self.birthday.value.replace('/', '')
 
+            # Create a datetime.date object from the birthday string
             try:
                 birthday = datetime.strptime(birthday, "%d%m%Y").date()
 
             except ValueError:
                 return await ctx.edit_original_response(content=messages["birthday_invalid"])
 
+            # Update the user's birthday in the database
             update_birthday(ctx.user.id, birthday)
 
         if self.timezone.value:
             with open('data/timezones.json') as f:
                 timezones = json.load(f)
 
+            # Check if the timezone is valid
             if self.timezone.value not in timezones:
                 return await ctx.edit_original_response(content=messages["timezone_invalid"])
 
+            # Update the user's timezone in the database
             update_timezone(ctx.user.id, self.timezone.value)
 
         if self.bio.value:
+            # Update the user's bio in the database
             update_bio(ctx.user.id, self.bio.value)
 
         if self.favorite_games.values:
+            # Remove all the game role IDs from the user
             for role_id in game_role_ids:
                 role = ctx.guild.get_role(role_id)
 
@@ -97,12 +105,14 @@ class ProfileForm(ui.Modal, title='Profile Update'):
 
             _games = list()
 
+            # Create a list with the selected games and add the selected game role IDs to the user
             for _game in self.favorite_games.values:
                 _games.append(games[_game][0])
 
                 game_role = ctx.guild.get_role(games[_game][4])
                 await ctx.user.add_roles(game_role)
 
+            # Update the user's favorite games in the database
             update_favorite_games(ctx.user.id, "|".join(_games))
 
         return await ctx.edit_original_response(content=messages["profile_updated"])
@@ -124,6 +134,7 @@ class UnlinkConfirm(discord.ui.View):
 
         steam_id = get_steam_id(self.member.id)
 
+        # Remove the user from the database
         remove_user(self.member.id, steam_id)
 
         return await self.ctx.edit_original_response(content=messages["profile_unlink_success"], view=None)
@@ -142,6 +153,7 @@ class Profile(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
+        # Create a Steam WebAPI instance
         self.steamAPI = WebAPI(steam_key)
 
         self.mm_rank_role_ids = mm_rank_role_ids
@@ -155,18 +167,22 @@ class Profile(commands.Cog):
 
         await log_message(ctx, f'`{ctx.user}` has used the `{ctx.command.name}` command.')
 
+        # If no member was mentioned, use the author of the message
         if not member:
             member = ctx.user
 
+        # Check if the user has linked their Steam profile with the bot first
         if not already_exists(member.id):
             return await ctx.edit_original_response(content=messages["profile_not_linked"])
 
         steam_id = get_steam_id(member.id)
 
         # noinspection PyUnresolvedReferences
+        # Fetch the user's profile data from the Steam WebAPI
         steam_user = self.steamAPI.ISteamUser.GetPlayerSummaries_v2(steamids=steam_id)["response"]["players"][0]
 
         # noinspection PyUnresolvedReferences
+        # Fetch the user's ban data from the Steam WebAPI
         bans = self.steamAPI.ISteamUser.GetPlayerBans_v1(steamids=steam_id)["players"][0]
 
         ban_info = {"VAC Banned": bans["VACBanned"], "Community Banned": bans["CommunityBanned"]}
@@ -191,6 +207,7 @@ class Profile(commands.Cog):
         group_count = len(self.steamAPI.ISteamUser.GetUserGroupList_v1(steamid=steam_id)["response"]["groups"])
 
         async with aiohttp.ClientSession() as session:
+            # Fetch the user's owned games data from the Steam WebAPI
             async with session.get("https://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/?key={}&steamid={}"
                                    "&include_played_free_games=1%format=json".format(steam_key, steam_id)) as games:
                 games = await games.json()
@@ -208,6 +225,7 @@ class Profile(commands.Cog):
             if "gameid" in steam_user.keys():
                 state = "In-game"
                 game_id = steam_user["gameid"]
+                # Fetch the game name from the Steam API using the app ID
                 async with session.get("https://store.steampowered.com/api/appdetails?appids={}".format(game_id)) \
                         as game_name:
                     game_name = await game_name.json()
@@ -249,11 +267,13 @@ class Profile(commands.Cog):
 
         await log_message(ctx, f'`{ctx.user}` has used the `{ctx.command.name}` command.')
 
+        # Check if the user has already linked their Steam profile with the bot
         if already_exists(ctx.user.id):
             return await ctx.edit_original_response(content=messages["profile_previously_linked"])
 
         try:
             # noinspection PyUnresolvedReferences
+            # Convert the entered Steam ID into the correct format for lookup
             steam_id = SteamID.from_url('https://steamcommunity.com/id/{}'.format(community_id)
                                         if 'https://steamcommunity.com/id/' not in community_id else community_id)
 
@@ -261,6 +281,7 @@ class Profile(commands.Cog):
                 steam_id = community_id
 
             # noinspection PyUnresolvedReferences
+            # Fetch the user's profile data from the Steam WebAPI
             steam_user = self.steamAPI.ISteamUser.GetPlayerSummaries_v2(steamids=steam_id)["response"]["players"][0]
 
             steam_id = SteamID(steam_user["steamid"])
@@ -271,22 +292,29 @@ class Profile(commands.Cog):
         except (requests.HTTPError, IndexError):
             return await ctx.edit_original_response(content=messages["profile_not_found"])
 
+        # Check if the user has a generated verification token in the database
         if not has_generated_token(ctx.user.id):
+            # Generate a verification token for th euser
             _token = generate_token()
+            # Initiate the verification process
             initiate_auth(ctx.user.id, _token)
 
             return await ctx.edit_original_response(content=messages["auth_add_token"].format(_token))
 
         else:
+            # Retrieve the user's verification token from the database
             _token = get_token(ctx.user.id)
 
             if steam_user["personaname"].endswith(_token):
+                # Add the user to the database
                 add_user(ctx.user.id, steam_user["steamid"])
+                # Remove the user's verification token from the database
                 cleanup_auth(ctx.user.id)
 
                 await ctx.edit_original_response(content=messages["profile_link_success"])
 
                 # noinspection PyUnresolvedReferences
+                # Fetch the user's game stats for CSGO (app ID 730) from the Steam WebAPI
                 game_stats = self.steamAPI.ISteamUserStats.GetUserStatsForGame_v2(steamid=steam_id, appid=730)
 
                 game_stats = game_stats["playerstats"]["stats"]
@@ -297,41 +325,53 @@ class Profile(commands.Cog):
                     if game_stat["name"] == 'total_time_played':
                         hours = round(game_stat["value"] / 3600)
 
+                # Update the user's total playtime in the database
                 update_hours(ctx.user.id, hours)
 
                 async with aiohttp.ClientSession() as session:
+                    # Fetch the user's matchmaking stats
                     async with session.get(f'http://localhost:5000/stats/view/mm/{steam_id}') as stats:
                         stats = await stats.json()
 
                     if "error" not in stats.keys():
+                        # Remove all the matchmaking roles from the user
                         for role_id in self.mm_rank_role_ids.values():
                             role = ctx.guild.get_role(role_id)
 
                             if role in ctx.user.roles:
                                 await ctx.user.remove_roles(role)
 
+                        # Fetch the matchmaking role from the user's matchmaking rank
                         rank_role = ctx.guild.get_role(self.mm_rank_role_ids[stats["rank"]])
 
+                        # Add the matchmaking role to the user
                         await ctx.user.add_roles(rank_role)
 
+                    # Fetch the user's FaceIT stats
                     async with session.get(f'http://localhost:5000/stats/view/faceit/{steam_id}') as stats:
                         stats = await stats.json()
 
                     if "error" not in stats.keys():
+                        # Remove all the FaceIT roles from the user
                         for role_id in self.faceit_rank_role_ids.values():
                             role = ctx.guild.get_role(role_id)
 
                             if role in ctx.user.roles:
                                 await ctx.user.remove_roles(role)
 
+                        # Fetch the FaceIT role from the user's FaceIT rank
                         rank_role = ctx.guild.get_role(self.faceit_rank_role_ids[str(stats["rank"])])
 
+                        # Add the FaceIT role to the user
                         await ctx.user.add_roles(rank_role)
 
                     if "loccountrycode" in steam_user.keys():
+                        # Fetch the user's country name from the Rest Countries API
                         async with session.get(f'https://restcountries.com/v3.1/alpha/{steam_user["loccountrycode"]}') \
                                 as res:
                             res = await res.json()
+
+                        # Update the user's country name in the database
                         update_country(ctx.user.id, res[0]["name"]["common"])
 
                         region = res[0]["region"]
@@ -339,8 +379,10 @@ class Profile(commands.Cog):
                         if region == "Americas":
                             region = res[0]["subregion"]
 
+                        # Update the user's region in the database
                         update_region(ctx.user.id, region)
 
+                        # Remove all the region roles from the user
                         for role_id in self.region_role_ids.values():
                             role = ctx.guild.get_role(role_id)
 
@@ -349,8 +391,10 @@ class Profile(commands.Cog):
 
                         region_role_id = self.region_role_ids[region]
 
+                        # Fetch the region role from the user's region
                         region_role = ctx.guild.get_role(region_role_id)
 
+                        # Add the region role to the user
                         await ctx.user.add_roles(region_role)
 
                 return await log_message(ctx, f'`{ctx.user}` have linked their Steam profile.')
@@ -365,7 +409,9 @@ class Profile(commands.Cog):
 
         await log_message(ctx, f'`{ctx.user}` has used the `{ctx.command.name}` command.')
 
+        # Check if the user has a linked Steam profile in the database
         if already_exists(ctx.user.id):
+            # Send a confirmation view for the unlink process to complete
             view = UnlinkConfirm()
             view.ctx = ctx
             view.member = ctx.user
@@ -383,6 +429,7 @@ class Profile(commands.Cog):
         if not already_exists(ctx.user.id):
             return await ctx.edit_original_response(content=messages["profile_not_linked"])
 
+        # Create the profile setup form
         modal = ProfileForm()
 
         options = list()
@@ -390,10 +437,13 @@ class Profile(commands.Cog):
         with open('data/games.json') as f:
             games = json.load(f)
 
+        # Fetch the favorite games of the user from the database
         fav_games = get_favorite_games(ctx.user.id)
 
+        # Create select options for the available games
         for abbr, game in games.items():
             if game[0] in fav_games:
+                # Check the option for each favorite game
                 options.append(discord.SelectOption(label=game[0], value=abbr, default=True))
 
             else:
@@ -415,8 +465,10 @@ class Profile(commands.Cog):
             steam_id = get_steam_id(ctx.user.id)
 
             # noinspection PyUnresolvedReferences
+            # Fetch the user's Steam profile from the Steam API
             steam_user = self.steamAPI.ISteamUser.GetPlayerSummaries_v2(steamids=steam_id)["response"]["players"][0]
 
+            # This command is only for those users who do not have a country set on their Steam profile
             if "loccountrycode" in steam_user.keys():
                 return await ctx.edit_original_response(content=messages["country_link_warning"])
 
@@ -424,12 +476,14 @@ class Profile(commands.Cog):
                 return await ctx.edit_original_response(content=messages["country_too_long"])
 
             async with aiohttp.ClientSession() as session:
+                # Check if the entered country name is valid using the Rest Countries API
                 async with session.get(f'https://restcountries.com/v3.1/name/{country}') as res:
                     if res.status == 404:
                         return await ctx.edit_original_response(content='Invalid country name.')
 
                     res = await res.json()
 
+            # Update the user's country name in the database
             update_country(ctx.user.id, res[0]["name"]["common"])
 
             region = res[0]["region"]
@@ -437,8 +491,10 @@ class Profile(commands.Cog):
             if region == "Americas":
                 region = res[0]["subregion"]
 
+            # Update the user's region in the database
             update_region(ctx.user.id, region)
 
+            # Remove all the region roles from the user
             for role_id in self.region_role_ids.values():
                 role = ctx.guild.get_role(role_id)
 
@@ -447,8 +503,10 @@ class Profile(commands.Cog):
 
             region_role_id = self.region_role_ids[region]
 
+            # Fetch the region role from the user's region
             region_role = ctx.guild.get_role(region_role_id)
 
+            # Add the region role to the user
             await ctx.user.add_roles(region_role)
 
             return await ctx.edit_original_response(content=messages["country_updated"])
@@ -464,9 +522,11 @@ class Profile(commands.Cog):
 
         await log_message(ctx, f'`{ctx.user}` has used the `{ctx.command.name}` command.')
 
+        # If no member is mentioned, use the author of the message
         if member is None:
             member = ctx.user
 
+        # Check if the user has a linked Steam profile in the database
         if not already_exists(member.id):
             return await ctx.edit_original_response(content=messages["profile_not_linked"])
 
@@ -474,6 +534,7 @@ class Profile(commands.Cog):
             steam_id = get_steam_id(member.id)
 
             async with aiohttp.ClientSession() as session:
+                # Fetch the user's inventory information
                 async with session.get(f'http://localhost:5000/inventory/{steam_id}') as inv:
                     inv = await inv.json()
 
@@ -481,6 +542,7 @@ class Profile(commands.Cog):
                 return await ctx.edit_original_response(content=messages["inventory_error"])
 
             # noinspection PyUnresolvedReferences
+            # Fetch the user's Steam profile from the Steam API
             steam_user = self.steamAPI.ISteamUser.GetPlayerSummaries_v2(steamids=steam_id)["response"]["players"][0]
 
             embed = discord.Embed(colour=self.bot.embed_colour)
@@ -494,6 +556,7 @@ class Profile(commands.Cog):
             embed.description = f'`{inv["item_count"]}` items worth `${inv["value"]}`.'
 
             view = discord.ui.View()
+            # Add a button to directly link to the user's Steam inventory
             view.add_item(
                 discord.ui.Button(label='View Inventory',
                                   url=f'https://steamcommunity.com/profiles/{steam_id}/inventory/')
@@ -509,9 +572,11 @@ class Profile(commands.Cog):
 
         await log_message(ctx, f'`{ctx.user}` has used the `{ctx.command.name}` command.')
 
+        # If no member is mentioned, use the author of the message
         if member is None:
             member = ctx.user
 
+        # Check if the user has a linked Steam profile in the database
         if not already_exists(member.id):
             return await ctx.edit_original_response(content=messages["profile_not_linked"])
 
@@ -539,6 +604,7 @@ class Profile(commands.Cog):
 
     @tasks.loop(hours=24)
     async def wish_users(self):
+        # Fetch the list of users whose birthdate is today
         users = get_birthday_bois()
 
         if not users:
@@ -547,41 +613,52 @@ class Profile(commands.Cog):
         birthday_channel = self.bot.get_channel(birthday_channel_id)
 
         for _user in users:
+            # Get the user object from the user ID
             user = self.bot.get_user(_user[0])
 
+            # If the user is not found, skip to the next entry
             if not user:
                 continue
 
+            # Try to send a DM to the user, and if it fails, just pass
             try:
                 await user.send(messages["birthday_message"].format(user.mention))
 
             except (discord.Forbidden, discord.errors.Forbidden):
                 pass
 
+            # Send a message in the birthday channel
             await birthday_channel.send(messages["birthday_message"].format(user.mention))
 
     @wish_users.before_loop
     async def _before_wish_users(self):
+        # Wait until the bot is ready before starting the task
         await self.bot.wait_until_ready()
 
     async def cog_load(self) -> None:
+        # Start the task on cog load
         self.wish_users.start()
 
     async def cog_unload(self) -> None:
+        # Cancel the task on cog unload
         self.wish_users.cancel()
 
     # Retrieve member data on joining, if exists
     @commands.Cog.listener()
     async def on_member_join(self, member):
+        # Check if an archive entry for this user exists
         if archive_exists(member.id):
+            # Retrieve the archive entry and push it into the active users
             unarchive_user(member.id)
 
     # Erase member data on leaving, if exists
     @commands.Cog.listener()
     async def on_member_remove(self, member):
+        # Check if the user exists in our database first
         if already_exists(member.id):
             steam_id = get_steam_id(member.id)
 
+            # Archive the user data
             archive_user(member.id, steam_id)
 
 

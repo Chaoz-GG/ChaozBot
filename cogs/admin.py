@@ -61,7 +61,7 @@ class UnlinkConfirm(discord.ui.View):
         remove_user(self.member.id, steam_id)
 
         return await self.ctx.edit_original_response(content=messages["profile_unlink_success"].format(self.member),
-                                                    view=None)
+                                                     view=None)
 
     # noinspection PyUnusedLocal
     @discord.ui.button(label='\u274C',

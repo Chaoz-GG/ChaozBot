@@ -501,7 +501,7 @@ class Edit(ui.Modal, title='Edit Team'):
         
         # Notify the user of successful update
         return await self.ctx.edit_original_response(content=messages["team_updated"].format(team["name"]),
-                                                    embed=None, view=None)
+                                                     embed=None, view=None)
 
 
 class MemberSelect(discord.ui.Select):

@@ -89,7 +89,7 @@ class LFPTeamSelect(discord.ui.Select):
         await channel.send(embed=embed)
 
         await self.ctx.edit_original_response(content=messages["ad_posted"].format(channel.mention),
-                                             embed=None, view=None)
+                                              embed=None, view=None)
 
 
 class LFCTeamSelect(discord.ui.Select):
@@ -138,7 +138,7 @@ class LFCTeamSelect(discord.ui.Select):
         await channel.send(embed=embed)
 
         await self.ctx.edit_original_response(content=messages["ad_posted"].format(channel.mention),
-                                             embed=None, view=None)
+                                              embed=None, view=None)
 
 
 class LFP(ui.Modal, title='Looking For Players'):
